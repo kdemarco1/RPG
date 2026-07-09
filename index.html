@@ -18,29 +18,51 @@
 
             <h2>Create Your Hero</h2>
 
-            <label>
-                Name:
-                <input id="nameInput" type="text" placeholder="Enter name">
-            </label>
+            <div id="creationArea">
 
-            <h3>Choose Your Class</h3>
+                <div id="classInfo">
 
-            <button class="classButton" data-class="Knight">
-                🛡️ Knight
-            </button>
+                    <h2 id="selectedTitle">
+                        Choose a Class
+                    </h2>
 
-            <button class="classButton" data-class="Magician">
-                🧙🏼‍♂️ Magician
-            </button>
+                    <div id="portrait">
+                        ❓
+                    </div>
+                    
+                    <p id="classStats">
+                    </p>
+                </div>
+                
+                <div id="creationControls">
 
-            <button class="classButton" data-class="Archer">
-                🏹 Archer
-            </button>
-         
-            <p id="classDescription">Select a class to see its description.</p>
+                    <label>
+                        Character Name:
+                    </label>
 
-            <button id="startButton">Start Your Adventure</button>
+                    <input id="nameInput" type="text" placeholder="Enter hero name">
 
+                    <h3>Select Class</h3>
+
+                    <button class="classButton" data-class="Knight">
+                       🛡️ Knight
+                    </button>
+
+                    <button class="classButton" data-class="Magician">
+                        🧙🏼‍♂️ Magician
+                    </button>
+
+                    <button class="classButton" data-class="Archer">
+                         🏹 Archer
+                    </button>
+
+                    <br>
+
+                    <button id="startGame">
+                        Begin Adventure
+                    </button>
+                </div>
+            </div>
         </section>
 
         <!-- Main Game Screen -->

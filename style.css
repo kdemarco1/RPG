@@ -68,3 +68,32 @@ button:hover {
     text-align: center;
     margin-top: 20px;
 }
+
+#creationArea{
+    display:flex;
+    gap:40px;
+}
+
+
+#classInfo{
+    flex:1;
+    text-align:center;
+}
+
+
+#creationControls{
+    flex:1;
+}
+
+
+#portrait{
+    font-size:80px;
+    margin:20px;
+}
+
+
+.classButton.selected{
+    background:gold;
+    color:black;
+
+}

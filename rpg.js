@@ -68,7 +68,7 @@ async function startGame() {
     console.clear();
     
     // 1. Setup Player
-    player.name = prompt("Welcome to the RPG game! Please enter your character's name:") || "Hero";
+    player.name = nameInput.value;
     
     await writeSlowly(`Your character's name is ${player.name}!`);
     console.log("You now must choose your character's class. Each Class comes with 3 healing potions to use during battle.");
@@ -210,10 +210,65 @@ document.querySelectorAll(".classButton").forEach(button => {
 
     button.addEventListener("click", () => {
         selectedClass = button.dataset.class;
-        document.getElementById("classDescription").textContent = `${selectedClass} selected!`;
+        document.getElementById("selectedTitle").textContent = selectedClass;
+
+        let description = "";
+        let stats = "";
+        let icon = "";
+
+        if (selectedClass === "Knight"){
+
+            icon="🛡️";
+            description="A powerful warrior who relies on armor and strength.";
+            stats="Health: Medium<br>Attack:Medium-High";
+        }
+        
+        if (selectedClass === "Magician"){
+            icon="🧙🏼‍♂️"
+            description="A spellcaster with devastating attacks."
+            stats="Health: Low<br>Attack: High"
+        }
+
+        if (selectedClass === "Archer"){
+            icon="🏹";
+            description="A ranged fighter with excellent survival."
+            stats="Health: High<br>Attack: Low";
+        }
+
+        document.getElementById("portrait").textContent = icon;
+        document.getElementById("classDescription").innerHTML = description;
+        document.getElementById("classStats").innerHTML = stats;
     });
 });
 
 document.getElementById("startButton").addEventListener("click", () => {
     startGame();
 });
+
+const startButton = document.getElementById("startButton");
+startButton.addEventListener("click", startGame);
+
+async function startGame() {
+    player.name = nameInput.value || "Hero";
+    player.charClass = selectedClass;
+
+    if (selectedClass === "Knight") {
+        player.health = getRandomInt(17, 26);
+        player.attackRange = [12, 20];
+    }
+    if (selectedClass === "Magician") {
+        player.health = getRandomInt(10, 20);
+        player.attackRange = [14, 25];
+    }
+    if (selectedClass === "Archer") {
+        player.health = getRandomInt(26, 34);
+        player.attackRange = [3, 10];
+    }
+
+    startScreen.style.display = "none";
+    battleScreen.style.display = "block";
+
+    await writeSlowly(
+        `${player.name} the ${player.charClass} begins their adventure!`
+    );
+}

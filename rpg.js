@@ -202,6 +202,6 @@ async function startGame() {
     }
 }
 
-window.onload = () => {
+document.getElementById("startButton").addEventListener("click", () => {
     startGame();
-}
+});

@@ -202,5 +202,6 @@ async function startGame() {
     }
 }
 
-// To run the script, open your browser console and type:
-// startGame();
+window.onload = () => {
+    startGame();
+}

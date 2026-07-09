@@ -2,18 +2,22 @@
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+const startScreen = document.getElementById("startScreen");
+const battleScreen = document.getElementById("battleScreen");
+const nameInput = document.getElementById("nameInput");
+const logBox = document.getElementById("log");
+
+let selectedClass = "";
+
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// Slows response time
-const log = document.getElementById("log");
-
 async function writeSlowly(text, delayMultiplier = 20) {
-    const line = document.createElement("div");
-    line.innerHTML = text;
-    log.appendChild(line);
-    log.scrollTop = log.scrollHeight;
+    let message = document.createElement("p");
+    message.textContent = text;
+    logBox.appendChild(message);
+    logBox.scrollTop = logBox.scrollHeight;
     await sleep(delayMultiplier * text.length); 
 }
 
@@ -201,6 +205,14 @@ async function startGame() {
         }
     }
 }
+
+document.querySelectorAll(".classButton").forEach(button => {
+
+    button.addEventListener("click", () => {
+        selectedClass = button.dataset.class;
+        document.getElementById("classDescription").textContent = `${selectedClass} selected!`;
+    });
+});
 
 document.getElementById("startButton").addEventListener("click", () => {
     startGame();

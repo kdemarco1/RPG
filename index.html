@@ -1,46 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Simple RPG</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
+
     <div id="game">
 
-        <h1>Welcome to a Simple RPG!</h1>
+        <h1>⚔️ Welcome to Simple RPG! ⚔️</h1>
 
-        <button id="startButton">Start Game</button>
-        
-        <div id="stats">
-            
-            <div>
-                <strong> Name:</strong>
-                <span id="playerName">---</span>
+        <!-- Character Creation -->
+        <section id="startScreen">
+
+            <h2>Create Your Hero</h2>
+
+            <label>
+                Name:
+                <input id="nameInput" type="text" placeholder="Enter name">
+            </label>
+
+            <h3>Choose Your Class</h3>
+
+            <button class="classButton" data-class="Knight">
+                🛡️ Knight
+            </button>
+
+            <button class="classButton" data-class="Magician">
+                🧙🏼‍♂️ Magician
+            </button>
+
+            <button class="classButton" data-class="Archer">
+                🏹 Archer
+            </button>
+         
+            <p id="classDescription">Select a class to see its description.</p>
+
+            <button id="startButton">Start Your Adventure</button>
+
+        </section>
+
+        <!-- Main Game Screen -->
+        <section id="battleScreen" style="display: none;">
+
+            <div id="characters">
+
+                <div class="card">
+
+                    <h2>Hero</h2>
+
+                    <p>
+                        Name: <span id="playerName"></span>
+                    </p>
+
+                    <div class="healthBar">
+
+                        <div id="playerHealthBar"></div>
+
+                    </div>
+
+                    <p>
+                        HP: <span id="playerHealth"></span>
+                    </p>
+
+                    <p>
+                        🧪 Potions: <span id="playerPotions"></span>
+                    </p>
+
+                </div>
+
+        <div id="card">
+
+            <h2>Enemy</h2>
+
+            <p>
+                <span id="enemyName"></span>
+            </p>
+
+            <div class="healthBar">
+
+                <div id="enemyHealthBar"></div>
+
             </div>
 
-            <div>
-                <strong>Class:</strong>
-                <span id="playerClass">---</span>
-            </div>
-
-            <div>
-                <strong>Health:</strong>
-                <span id="playerHealth">0</span>
-            </div>
-
-            <div>
-                <strong>Potions:</strong>
-                <span id="playerPotions">3</span>
-            </div>
-
-            <hr>
-
-            <div>
-                <strong>Enemy HP:</strong>
-                <span id="enemyHealth">0</span>
-            </div>
+            <p>
+                HP:
+                <span id="enemyHealth"></span>
+            </p>
         </div>
+    </div>
+    
+    <div id="log">
+    </div>
+
+    <div id="actions">
+
+        <button id="attackButton">
+            ⚔️ Attack
+        </button>
+
+        <button id="defendButton">
+            🛡️ Defend
+        </button>
+
+        <button id="healthButton">
+            🧪 Use Health Potion
+        </button>
+
+    </div>
+    </section>
     </div>
     <script src="rpg.js"></script>
 

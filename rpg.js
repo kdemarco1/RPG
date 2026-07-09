@@ -7,8 +7,13 @@ function getRandomInt(min, max) {
 }
 
 // Slows response time
+const log = document.getElementById("log");
+
 async function writeSlowly(text, delayMultiplier = 20) {
-    console.log(text);
+    const line = document.createElement("div");
+    line.innerHTML = text;
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
     await sleep(delayMultiplier * text.length); 
 }
 

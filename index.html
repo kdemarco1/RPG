@@ -2,15 +2,44 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>RPG</title>
+    <title>Simple RPG</title>
 </head>
 <body>
-    <h1>Welcome to a RPG!</h1>
-    <p>Right-click the page, select "Inspect", and open the <strong>Console</strong> tab to play.</p>
+    <div id="game">
 
+        <h1>Welcome to a Simple RPG!</h1>
+
+        <div id="stats">
+            
+            <div>
+                <strong> Name:</strong>
+                <span id="playerName">---</span>
+            </div>
+
+            <div>
+                <strong>Class:</strong>
+                <span id="playerClass">---</span>
+            </div>
+
+            <div>
+                <strong>Health:</strong>
+                <span id="playerHealth">0</span>
+            </div>
+
+            <div>
+                <strong>Potions:</strong>
+                <span id="playerPotions">3</span>
+            </div>
+
+            <hr>
+
+            <div>
+                <strong>Enemy HP:</strong>
+                <span id="enemyHealth">0</span>
+            </div>
+        </div>
+    </div>
     <script src="rpg.js"></script>
-    <script>
-        startGame(); 
-    </script>
+    
 </body>
 </html>

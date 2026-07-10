@@ -80,6 +80,7 @@ class Character {
     constructor(name, health, attackRange, charClass, potions = 0) {
         this.name = name;
         this.health = health;
+        this.maxHealth = health;
         this.attackRange = attackRange;
         this.charClass = charClass;
         this.potions = potions;
@@ -162,6 +163,13 @@ function updateBattleUI(){
     document.getElementById("playerPotions").textContent = player.potions;
     document.getElementById("enemyName").textContent = currentEnemy.name;
     document.getElementById("enemyHealth").textContent = currentEnemy.health
+
+    const playerPercent = (player.health / player.maxHealth) * 100;
+    const enemyPercent = (currentEnemy.health / currentEnemy.maxHealth) * 100;
+
+    document.getElementById('playerHealthBar').style.width = playerPercent + '%';
+    document.getElementById('enemyHealthBar').style.width = enemyPercent + '%';
+    document.getElementById('playerHealthBar').style.backgroundColor = playerPercent < 30 
 }
 
 function toggleButtons(disabled){

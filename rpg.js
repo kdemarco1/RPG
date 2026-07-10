@@ -240,7 +240,7 @@ document.getElementById('fleeButton').addEventListener('click', async () => {
     document.getElementById('choiceButtons').style.display = 'none';
 });
 
-attackButton.addEventListener("click", async () => {
+attackButton.addEventListener('click', async () => {
     toggleButtons(true);
     player.isDefending = false;
     await player.attack(currentEnemy);
@@ -254,6 +254,29 @@ attackButton.addEventListener("click", async () => {
     }
 });
 
-defendButton.addEventListener("click"), async () => {
+defendButton.addEventListener('click', async () => {
+    toggleButtons(true);
+    player.isDefending = false;
 
-}
+    await writeSlowly(`${player.name} brace for impact! Damage will be halved.`);
+    await enemyTurn();
+});
+
+healButton.addEventListener('click', async () => {
+    toggleButtons(true);
+    player.isDefending = false;
+    
+    if (player.potions > 0){
+        let healingAmount = getRandomInt(10, 20);
+        player.health += healingAmount;
+        player.potions -= 1;
+
+        await writeSlowly(`${player.name} used a healing potion and restored ${healingAmount} health!`)
+        updateBattleUI();
+        await enemyTurn();
+    }
+    else {
+        await writeSlowly('No healing potions left!')
+        toggleButtons(false)
+    }
+});

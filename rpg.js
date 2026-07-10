@@ -1,14 +1,11 @@
 // RPG
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-
 const startScreen = document.getElementById("startScreen");
 const battleScreen = document.getElementById("battleScreen");
 const nameInput = document.getElementById("nameInput");
 const logBox = document.getElementById("log");
-
 let selectedClass = "";
-
 let classConfirmed = false;
 const confirmClassButton = document.getElementById("confirmClassButton")
 
@@ -79,7 +76,6 @@ function updateCharacterCard(){
     document.getElementById("portrait").style.display = "none";
 }
 
-// Character Class
 class Character {
     constructor(name, health, attackRange, charClass, potions = 0) {
         this.name = name;
@@ -115,8 +111,6 @@ class Character {
         await writeSlowly(`${this.name}'s health is now ${this.health}`);
     }
 }
-
-// Characters
 let player = new Character("", 0, [0, 0], "", 0);
 const enemy1 = new Character("Magician", getRandomInt(20, 24), [12, 20], "Magician", 0);
 const enemy2 = new Character("Monster", getRandomInt(20, 35), [4, 10], "Monster", 0);
@@ -195,6 +189,71 @@ async function startEncounter(enemy){
     updateBattleUI();
     
     let enemyType = currentEnemy.charClass === player.charClass ? "another" : "a";
-    await writeSlowly(`${player.name} sees ${enemyType}!`);
+    await writeSlowly(`${player.name} sees ${enemyType} ${currentEnemy.name}!`);
     toggleButtons(false);
+}
+
+
+async function enemyTurn(){
+
+    await sleep(600);
+    await currentEnemy.attack(player);
+    updateBattleUI();
+
+    if (player.health <= 0){
+        await writeSlowly(`Defeat! ${player.name} has fallen in battle Game over.`);
+    }
+    else {
+        toggleButtons(false);
+    }
+}
+
+async function handleEnemyDefeat(){
+    await writeSlowly(`Victory! ${currentEnemy.name} has been defeated!`);
+
+    if (currentEnemy === enemy1){
+        await writeSlowly(`Will you challenge the next foe or flee?`);
+        attackButton.style.display = 'none';
+        defendButton.style.display = 'none';
+        healButton.style.display = 'none';
+
+        document.getElementById('choiceButtons').style.display = 'block';
+    }
+    else {
+        await writeSlowly(`All enemies have been defeated! Congratulations, ${player.name}, you win!`)
+    }
+}
+
+document.getElementById('nextFoeButton').addEventListener('click', async () => {
+    document.getElementById('choiceButtons').style.display = 'none';
+    attackButton.style.display = 'inline-block';
+    defendButton.style.display = 'inline-block';
+    healButton.style.display = 'inline-block';
+
+    await writeSlowly(`${player.name} bravely steps forward and challenges the next foe!`)
+    await sleep(1000);
+    startEncounter(enemy2);
+});
+
+document.getElementById('fleeButton').addEventListener('click', async () => {
+    await writeSlowly(`${player.name} chose to flee! You live to fight another day`);
+    document.getElementById('choiceButtons').style.display = 'none';
+});
+
+attackButton.addEventListener("click", async () => {
+    toggleButtons(true);
+    player.isDefending = false;
+    await player.attack(currentEnemy);
+    updateBattleUI();
+
+    if (currentEnemy.health <= 0){
+        await handleEnemyDefeat();
+    }
+    else {
+        await enemyTurn();
+    }
+});
+
+defendButton.addEventListener("click"), async () => {
+
 }

@@ -9,6 +9,10 @@ const logBox = document.getElementById("log");
 
 let selectedClass = "";
 
+let classConfirmed = false;
+const confirmClassButton = document.getElementById("confirmClassButton")
+
+
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -210,46 +214,99 @@ document.querySelectorAll(".classButton").forEach(button => {
 
     button.addEventListener("click", () => {
         selectedClass = button.dataset.class;
-        document.getElementById("selectedTitle").textContent = selectedClass;
-
-        let description = "";
-        let stats = "";
-        let icon = "";
-
-        if (selectedClass === "Knight"){
-
-            icon="🛡️";
-            description="A powerful warrior who relies on armor and strength.";
-            stats="Health: Medium<br>Attack:Medium-High";
-        }
-        
-        if (selectedClass === "Magician"){
-            icon="🧙🏼‍♂️"
-            description="A spellcaster with devastating attacks."
-            stats="Health: Low<br>Attack: High"
-        }
-
-        if (selectedClass === "Archer"){
-            icon="🏹";
-            description="A ranged fighter with excellent survival."
-            stats="Health: High<br>Attack: Low";
-        }
-
-        document.getElementById("portrait").textContent = icon;
-        document.getElementById("classDescription").innerHTML = description;
-        document.getElementById("classStats").innerHTML = stats;
+        document.querySelectorAll(".classButton").forEach(button => {button.classList.remove("selected");
+        });
+        button.classList.add("selected");
+        showClassInfo(selectedClass);
+        confirmClassButton.style.display = "inline-block";
+        confirmClassButton.textContent = `Confirm ${selectedClass}`;
     });
 });
 
-document.getElementById("startButton").addEventListener("click", () => {
-    startGame();
+function showClassInfo(className){
+
+    const title = document.getElementById("selectedTitle");
+    const portrait = document.getElementById("portrait")
+    const description = document.getElementById("classDescription");
+    const stats = document.getElementById("classStats");
+
+    if (className === "Knight"){
+        title.textContent = "Knight";
+        portrait.textContent = "🗡️";
+        description.textContent = "A powerful warrior who relies on armor and strength";
+        stats.innerHTML = "Health: Medium<br><br>Attack: Medium-High";
+    }
+        
+    if (className === "Magician"){
+        title.textContent = "Magician";    
+        portrait.textContent = "🧙🏼‍♂️";
+        description.textContent = "A spellcaster with devastating attacks";
+        stats.innerHTML = "Health: Low<br><br>Attack: High";
+        }
+
+    if (className === "Archer"){
+        title.textContent = "Archer";
+        portrait.textContent = "🏹";
+        description.textContent = "A ranged fighter with excellent survival";
+        stats.innerHTML = "Health: High<br><br>Attack: Low";
+        }
+};
+
+function updateCharacterCard(){
+    
+    let classIcon = "";
+    if (player.charClass === "Knight"){
+        classIcon = "🛡️";
+    }
+    else if (player.charClass === "Magician"){
+        classIcon = "🧙🏼‍♂️";
+    }
+    else if (player.charClass === "Archer"){
+        classIcon = "🏹";
+    }
+    document.getElementById("selectedTitle").textContent = player.name;
+    document.getElementById("classDescription").innerHTML = 
+        `<strong> ✔ Class Confirmed</strong><br><br>
+        <strong>${classIcon}</strong> ${player.charClass}<br><br>
+        <strong>❤️ </strong> ${player.health} HP<br><br>
+        <strong>⚔️ </strong> ${player.attackRange[0]}-${player.attackRange[1]}<br><br>
+        <strong>🧪 </strong> ${player.potions}`;
+    document.getElementById("classStats").innerHTML =
+        ``;
+    confirmClassButton.style.display = "none";
+    document.getElementById("beginAdventureButton").style.display = "inline-block";
+    document.querySelectorAll(".classButton").forEach(button=>{button.disabled = true;});
+    document.getElementById("portrait").style.display = "none";
+}
+
+confirmClassButton.addEventListener("click",()=>{
+    classConfirmed = true;
+    player.name = nameInput.value;
+    player.charClass = selectedClass;
+
+    if (selectedClass === "Knight"){
+        player.health = getRandomInt(17,26);
+        player.attackRange = [12,20];
+        player.potions = 3;
+    }
+    else if (selectedClass === "Magician"){
+        player.health = getRandomInt(10,20);
+        player.attackRange = [14,25];
+        player.potions = 5;
+    }
+    else{
+        player.health = getRandomInt(26,34);
+        player.attackRange = [3,10];
+        player.potions = 3;
+    }
+    updateCharacterCard();
 });
 
 const startButton = document.getElementById("startButton");
 startButton.addEventListener("click", startGame);
 
 async function startGame() {
-    player.name = nameInput.value || "Hero";
+    player.name = nameInput.value;
     player.charClass = selectedClass;
 
     if (selectedClass === "Knight") {
@@ -271,4 +328,8 @@ async function startGame() {
     await writeSlowly(
         `${player.name} the ${player.charClass} begins their adventure!`
     );
-}
+};
+
+document.getElementById("startButton").addEventListener("click", () => {
+    startGame();
+});

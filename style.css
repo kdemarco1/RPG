@@ -76,8 +76,8 @@ button:hover {
 
 
 #classInfo{
-    flex:1;
-    text-align:center;
+    width: 300px;
+    text-align:left;
 }
 
 
@@ -87,13 +87,28 @@ button:hover {
 
 
 #portrait{
-    font-size:80px;
+    font-size:40px;
     margin:20px;
+}
+
+#classDescription{
+    font-size: 14px;
 }
 
 
 .classButton.selected{
     background:gold;
     color:black;
+    border: 3px solid white;
+    transform: scale(1.05);
+}
 
+#confirmClassButton{
+    display: none;
+    padding: 12px 20px;
+}
+
+#beginAdventureButton{
+    display: none;
+    margin-top: 15px;
 }

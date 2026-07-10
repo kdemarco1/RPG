@@ -56,16 +56,14 @@ function showClassInfo(className){
 
 function updateCharacterCard(){
     
-    let classIcon = "";
-    if (player.charClass === "Knight"){
-        classIcon = "🛡️";
-    }
-    else if (player.charClass === "Magician"){
-        classIcon = "🧙🏼‍♂️";
-    }
-    else if (player.charClass === "Archer"){
-        classIcon = "🏹";
-    }
+    const icons = {
+        'Knight': '🛡️',
+        'Magician': '🧙🏼‍♂️',
+        'Archer': '🏹'
+    };
+
+    let classIcon = icons[player.charClass] || '';
+
     document.getElementById("selectedTitle").textContent = player.name;
     document.getElementById("classDescription").innerHTML = 
         `<strong> ✔ Class Confirmed</strong><br><br>
@@ -159,15 +157,44 @@ confirmClassButton.addEventListener("click",()=>{
     updateCharacterCard();
 });
 
-const startButton = document.getElementById("startButton");
-startButton.addEventListener("click", startGame);
+let currentEnemy;
+const attackButton = document.getElementById("attackButton");
+const defendButton = document.getElementById("defendButton");
+const healButton = document.getElementById("healButton");
+
+function updateBattleUI(){
+    document.getElementById("playerName").textContent = player.name;
+    document.getElementById("playerHealth").textContent = player.health;
+    document.getElementById("playerPotions").textContent = player.potions;
+    document.getElementById("enemyName").textContent = currentEnemy.name;
+    document.getElementById("enemyHealth").textContent = currentEnemy.health
+}
+
+function toggleButtons(disabled){
+    attackButton.disabled = disabled;
+    defendButton.disabled = disabled;
+    healButton.disabled = disabled;
+}
+
+const beginAdventureButton = document.getElementById("beginAdventureButton");
+beginAdventureButton.addEventListener("click", startGame);
 
 async function startGame() {
 
-    startScreen.style.display = "none";
-    battleScreen.style.display = "block";
+    document.getElementById("startScreen").style.display = "none";
+    document.getElementById("battleScreen").style.display = "block";
 
     await writeSlowly(
         `${player.name} the ${player.charClass} begins their adventure!`
     );
+    startEncounter(enemy1);
 };
+
+async function startEncounter(enemy){
+    currentEnemy = enemy
+    updateBattleUI();
+    
+    let enemyType = currentEnemy.charClass === player.charClass ? "another" : "a";
+    await writeSlowly(`${player.name} sees ${enemyType}!`);
+    toggleButtons(false);
+}

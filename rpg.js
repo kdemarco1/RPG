@@ -7,6 +7,8 @@ const nameInput = document.getElementById("nameInput");
 const logBox = document.getElementById("log");
 let selectedClass = "";
 let classConfirmed = false;
+let enemiesDefeated = 0;
+let maxEnemies = 3;
 const confirmClassButton = document.getElementById("confirmClassButton")
 
 
@@ -113,8 +115,13 @@ class Character {
     }
 }
 let player = new Character("", 0, [0, 0], "", 0);
-const enemy1 = new Character("Magician", getRandomInt(20, 24), [12, 20], "Magician", 0);
-const enemy2 = new Character("Monster", getRandomInt(20, 35), [4, 10], "Monster", 0);
+const enemyLibrary = [
+    {name: "Magician", healthRange: [20,24], attackRange: [12, 20], charClass: "Magician"},
+    {name: "Zombie", healthRange: [16,20], attackRange: [4, 10], charClass: "Zombie"},
+    {name: "Ghoul", healthRange: [12,24], attackRange: [6, 16], charClass: "Ghoul"},
+    {name: "Mimic", healthRange: [14,24], attackRange: [10, 22], charClass: "Mimic"},
+    {name: "Basilisk", healthRange: [20,24], attackRange: [16, 22], charClass: "Basilisk"},
+]
 
 document.querySelectorAll(".classButton").forEach(button => {
 
@@ -164,12 +171,13 @@ function updateBattleUI(){
     document.getElementById("enemyName").textContent = currentEnemy.name;
     document.getElementById("enemyHealth").textContent = currentEnemy.health
 
-    const playerPercent = (player.health / player.maxHealth) * 100;
-    const enemyPercent = (currentEnemy.health / currentEnemy.maxHealth) * 100;
+    const playerPercent = player.maxHealth > 0 ? (player.health / player.maxHealth) * 100 : 0;
+    const enemyPercent = player.maxHealth > 0 ? (currentEnemy.health / currentEnemy.maxHealth) * 100: 0;
 
     document.getElementById('playerHealthBar').style.width = playerPercent + '%';
     document.getElementById('enemyHealthBar').style.width = enemyPercent + '%';
-    document.getElementById('playerHealthBar').style.backgroundColor = playerPercent < 30 
+    document.getElementById('playerHealthBar').style.backgroundColor = playerPercent < 30 ? '#e74c3c' : '#2ecc71';
+    document.getElementById('enemyHealthBar').style.backgroundColor = enemyPercent < 30 ? '#e74c3c' : '#2ecc71';
 }
 
 function toggleButtons(disabled){
@@ -182,14 +190,28 @@ const beginAdventureButton = document.getElementById("beginAdventureButton");
 beginAdventureButton.addEventListener("click", startGame);
 
 async function startGame() {
+    player.name = nameInput.value;
+    player.charClass = selectedClass;
+    player.maxHealth = player.health;
 
+    if (selectedClass === 'Knight'){
+        player.health = getRandomInt(17, 26);
+        player.attackRange = [12, 20];
+    } else if (selectedClass === "Magician"){
+        player.health = getRandomInt(10, 20);
+        player.attackRange = [14, 25];
+    } else if (selectedClass === "Archer"){
+        player.health = getRandomInt(26, 34);
+        player.attackRange = [3,10];
+    }
     document.getElementById("startScreen").style.display = "none";
     document.getElementById("battleScreen").style.display = "block";
-
     await writeSlowly(
         `${player.name} the ${player.charClass} begins their adventure!`
     );
-    startEncounter(enemy1);
+    currentEnemy = spawnRandomEnemy();
+    startEncounter(currentEnemy);
+    updateBattleUI();
 };
 
 async function startEncounter(enemy){
@@ -210,6 +232,10 @@ async function enemyTurn(){
 
     if (player.health <= 0){
         await writeSlowly(`Defeat! ${player.name} has fallen in battle Game over.`);
+        document.getElementById('attackButton').style.display = 'none';
+        document.getElementById('defendButton').style.display = 'none';
+        document.getElementById('healButton').style.display = 'none';
+        document.getElementById('playAgainButton').style.display = 'inline-block';
     }
     else {
         toggleButtons(false);
@@ -219,7 +245,9 @@ async function enemyTurn(){
 async function handleEnemyDefeat(){
     await writeSlowly(`Victory! ${currentEnemy.name} has been defeated!`);
 
-    if (currentEnemy === enemy1){
+    enemiesDefeated++;
+
+    if (enemiesDefeated < maxEnemies){
         await writeSlowly(`Will you challenge the next foe or flee?`);
         attackButton.style.display = 'none';
         defendButton.style.display = 'none';
@@ -228,7 +256,9 @@ async function handleEnemyDefeat(){
         document.getElementById('choiceButtons').style.display = 'block';
     }
     else {
-        await writeSlowly(`All enemies have been defeated! Congratulations, ${player.name}, you win!`)
+        await writeSlowly(`All enemies have been defeated! Congratulations, ${player.name}, you win!`);
+        toggleButtons(true);
+        document.getElementById('playAgainButton').style.display = 'inline-block';
     }
 }
 
@@ -246,6 +276,7 @@ document.getElementById('nextFoeButton').addEventListener('click', async () => {
 document.getElementById('fleeButton').addEventListener('click', async () => {
     await writeSlowly(`${player.name} chose to flee! You live to fight another day`);
     document.getElementById('choiceButtons').style.display = 'none';
+    document.getElementById('playAgainButton').style.display = 'inline-block';
 });
 
 attackButton.addEventListener('click', async () => {
@@ -276,7 +307,7 @@ healButton.addEventListener('click', async () => {
     
     if (player.potions > 0){
         let healingAmount = getRandomInt(10, 20);
-        player.health += healingAmount;
+        player.health += Math.min(player.health + healingAmount, player.maxHealth);
         player.potions -= 1;
 
         await writeSlowly(`${player.name} used a healing potion and restored ${healingAmount} health!`)
@@ -288,3 +319,21 @@ healButton.addEventListener('click', async () => {
         toggleButtons(false)
     }
 });
+
+function spawnRandomEnemy(){
+    const template = enemyLibrary[Math.floor(Math.random() * enemyLibrary.length)];
+    const health = getRandomInt(template.healthRange[0], template.healthRange[1]);
+    return new Character(template.name, health, template.attackRange, template.charClass, 0);
+};
+
+function resetGame() {
+    battleScreen.style.display = 'none';
+    document.getElementById('startScreen').style.display = 'inline-block';
+    document.getElementById('battleScreen').style.display = 'none';
+    document.getElementById('playAgainButton').style.display = 'none';
+    enemy1.health = enemy1.maxHealth;
+    currentEnemy = spawnRandomEnemy();
+    updateBattleUI();
+};
+
+document.getElementById('playAgainButton').addEventListener('click', resetGame);

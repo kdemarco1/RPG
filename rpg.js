@@ -161,9 +161,9 @@ const enemyLibrary = [
 ];
 
 const playerConfigs = {
-    Knight: {healthRange: [45,55], attackRange: [8, 13], potions: 3},
-    Magician: {healthRange: [30, 40], attackRange: [12, 20], potions: 5},
-    Archer: {healthRange: [50, 60], attackRange: [6, 12], potions: 2}
+    Knight: {healthRange: [55,75], attackRange: [8, 13], potions: 3},
+    Magician: {healthRange: [50, 70], attackRange: [12, 20], potions: 5},
+    Archer: {healthRange: [70, 80], attackRange: [6, 12], potions: 2}
 };
 
 function initPlayer(name, charClass) {

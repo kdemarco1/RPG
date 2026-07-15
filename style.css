@@ -51,19 +51,6 @@ button:hover {
     border-radius: 10px;
 }
 
-.health-bar {
-    height: 25px;
-    background: #111;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-#playerHealthBar, #enemyHealthBar {
-    height: 100%;
-    width: 100%;
-    background: green;
-}
-
 #actions {
     text-align: center;
     margin-top: 20px;

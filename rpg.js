@@ -1,67 +1,81 @@
 // RPG
 
+// Constants
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const startScreen = document.getElementById("startScreen");
-const battleScreen = document.getElementById("battleScreen");
-const nameInput = document.getElementById("nameInput");
-const logBox = document.getElementById("log");
-let selectedClass = "";
+const enemy_attack_delay = 600;
+const next_foe_delay= 1000;
+const text_delay_multiplier = 20;
+const max_text_delay = 3000;
+const max_enemies = 3;
+
+// DOM References
+const startScreen = document.getElementById('startScreen');
+const battleScreen = document.getElementById('battleScreen');
+const nameInput = document.getElementById('nameInput');
+const logBox = document.getElementById('log');
+const confirmClassButton = document.getElementById('confirmClassButton');
+const beginAdventureButton = document.getElementById('beginAdventureButton');
+const attackButton = document.getElementById('attackButton');
+const defendButton = document.getElementById('defendButton');
+const healButton = document.getElementById('healButton');
+
+// Game Stats
+let selectedClass = '';
 let classConfirmed = false;
 let enemiesDefeated = 0;
-let maxEnemies = 3;
-const confirmClassButton = document.getElementById("confirmClassButton")
+let currentEnemy;
 
 
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-async function writeSlowly(text, delayMultiplier = 20) {
-    let message = document.createElement("p");
+async function writeSlowly(text, delayMultiplier = text_delay_multiplier) {
+    const message = document.createElement("p");
     message.textContent = text;
     logBox.appendChild(message);
     logBox.scrollTop = logBox.scrollHeight;
-    await sleep(delayMultiplier * text.length); 
+    await sleep(Math.min(delayMultiplier * text.length, max_text_delay)); 
 }
 
-function showClassInfo(className){
+// Class Selection
 
-    const title = document.getElementById("selectedTitle");
-    const portrait = document.getElementById("portrait")
-    const description = document.getElementById("classDescription");
-    const stats = document.getElementById("classStats");
-
-    if (className === "Knight"){
-        title.textContent = "Knight";
-        portrait.textContent = "🗡️";
-        description.textContent = "A powerful warrior who relies on armor and strength";
-        stats.innerHTML = "Health: Medium<br><br>Attack: Medium-High";
+const class_info = {
+    Knight: {
+        portrait: '🗡️',
+        description: 'A powerful warrior who relies on armor and strength',
+        stats: 'Health: Medium<br><br>Attack: Medium-High'
+    },
+    Magician: {
+        portrait: '🧙🏼‍♂️',
+        description: 'A spellcaster with devastating attacks',
+        stats: 'Health: Low<br><br>Attack: High'
+    },
+    Archer: {
+        portrait: '🏹',
+        description: 'A ranged fighter with excellent survival',
+        stats: 'Health: High<br><br>Attack: Low'
     }
-        
-    if (className === "Magician"){
-        title.textContent = "Magician";    
-        portrait.textContent = "🧙🏼‍♂️";
-        description.textContent = "A spellcaster with devastating attacks";
-        stats.innerHTML = "Health: Low<br><br>Attack: High";
-        }
-
-    if (className === "Archer"){
-        title.textContent = "Archer";
-        portrait.textContent = "🏹";
-        description.textContent = "A ranged fighter with excellent survival";
-        stats.innerHTML = "Health: High<br><br>Attack: Low";
-        }
 };
 
-function updateCharacterCard(){
-    
-    const icons = {
-        'Knight': '🛡️',
-        'Magician': '🧙🏼‍♂️',
-        'Archer': '🏹'
-    };
+const class_icons = {
+    Knight: '🗡️',
+    Magician: '🧙🏼‍♂️',
+    Archer: '🏹'
+};
 
-    let classIcon = icons[player.charClass] || '';
+function showClassInfo(className) {
+    const info = class_info[className];
+    if (!info) return;
+
+    document.getElementById('selectedTitle').textContent = className;
+    document.getElementById('portrait').textContent = info.portrait;
+    document.getElementById('classDescription').textContent = info.description;
+    document.getElementById('classStats').innerHTML = info.stats;
+}
+
+function updateCharacterCard() {
+    const classIcon = class_icons[player.charClass] || '';
 
     document.getElementById("selectedTitle").textContent = player.name;
     document.getElementById("classDescription").innerHTML = 
@@ -70,13 +84,35 @@ function updateCharacterCard(){
         <strong>❤️ </strong> ${player.health} HP<br><br>
         <strong>⚔️ </strong> ${player.attackRange[0]}-${player.attackRange[1]}<br><br>
         <strong>🧪 </strong> ${player.potions}`;
-    document.getElementById("classStats").innerHTML =
-        ``;
+    document.getElementById("classStats").innerHTML = '';
     confirmClassButton.style.display = "none";
-    document.getElementById("beginAdventureButton").style.display = "inline-block";
-    document.querySelectorAll(".classButton").forEach(button=>{button.disabled = true;});
+    beginAdventureButton.style.display = "inline-block";
+    document.querySelectorAll(".classButton").forEach(button=>{button.disabled = true; });
     document.getElementById("portrait").style.display = "none";
 }
+
+// Restore class-selection screen after play again
+
+function resetClassSelectionUI() {
+    document.querySelectorAll('.classButton').forEach(button => {
+        button.classList.remove('selected');
+        button.disabled = false;
+    });
+
+    document.getElementById('portrait').style.display = '';
+    document.getElementById('portrait').textContent = '';
+    document.getElementById('selectedTitle').textContent = '';
+    document.getElementById('classDescription').textContent = '';
+    document.getElementById('classStats').innerHTML = '';
+
+    confirmClassButton.style.display = 'none';
+    beginAdventureButton.style.display = 'none';
+    nameInput.value = '';
+    selectedClass = '';
+    classConfirmed = false;
+}
+
+// Character Class
 
 class Character {
     constructor(name, health, attackRange, charClass, potions = 0) {
@@ -109,70 +145,71 @@ class Character {
     }
 
     async takeDamage(damageValue) {
-        this.health -= damageValue;
-        if (this.health < 0) this.health = 0;
+        this.health = Math.max(0, this.health - damageValue);
         await writeSlowly(`${this.name}'s health is now ${this.health}`);
     }
 }
-let player = new Character("", 0, [0, 0], "", 0);
+
+let player = new Character('', 0, [0, 0], '', 0);
+
 const enemyLibrary = [
-    {name: "Magician", healthRange: [20,24], attackRange: [12, 20], charClass: "Magician"},
-    {name: "Zombie", healthRange: [16,20], attackRange: [4, 10], charClass: "Zombie"},
-    {name: "Ghoul", healthRange: [12,24], attackRange: [6, 16], charClass: "Ghoul"},
-    {name: "Mimic", healthRange: [14,24], attackRange: [10, 22], charClass: "Mimic"},
-    {name: "Basilisk", healthRange: [20,24], attackRange: [16, 22], charClass: "Basilisk"},
-]
+    {name: 'Magician', healthRange: [40,48], attackRange: [14, 20], charClass: 'Magician'},
+    {name: 'Zombie', healthRange: [32,40], attackRange: [6, 12], charClass: 'Zombie'},
+    {name: 'Ghoul', healthRange: [24,48], attackRange: [6, 14], charClass: 'Ghoul'},
+    {name: 'Mimic', healthRange: [38,48], attackRange: [10, 22], charClass: 'Mimic'},
+    {name: 'Basilisk', healthRange: [40,48], attackRange: [12, 20], charClass: 'Basilisk'},
+];
 
-document.querySelectorAll(".classButton").forEach(button => {
+const playerConfigs = {
+    Knight: {healthRange: [45,55], attackRange: [8, 13], potions: 3},
+    Magician: {healthRange: [30, 40], attackRange: [12, 20], potions: 5},
+    Archer: {healthRange: [50, 60], attackRange: [6, 12], potions: 2}
+};
 
-    button.addEventListener("click", () => {
+function initPlayer(name, charClass) {
+    const config = playerConfigs[charClass];
+    const hp = getRandomInt(config.healthRange[0], config.healthRange[1]);
+    const finalName = name.trim();
+    return new Character(finalName, hp, config.attackRange, charClass, config.potions);
+}
+
+function spawnRandomEnemy(){
+    const template = enemyLibrary[Math.floor(Math.random() * enemyLibrary.length)];
+    const health = getRandomInt(template.healthRange[0], template.healthRange[1]);
+    return new Character(template.name, health, template.attackRange, template.charClass, 0);
+}
+
+// Class Selection listeners
+
+document.querySelectorAll('.classButton').forEach(button => {
+    button.addEventListener('click', () => {
         selectedClass = button.dataset.class;
-        document.querySelectorAll(".classButton").forEach(button => {button.classList.remove("selected");
-        });
-        button.classList.add("selected");
+        document.querySelectorAll('.classButton').forEach(b => b.classList.remove('selected'));
+        button.classList.add('selected');
         showClassInfo(selectedClass);
-        confirmClassButton.style.display = "inline-block";
+        confirmClassButton.style.display = 'inline-block';
         confirmClassButton.textContent = `Confirm ${selectedClass}`;
     });
 });
 
-confirmClassButton.addEventListener("click",()=>{
+confirmClassButton.addEventListener('click', () => {
+    if (classConfirmed || !selectedClass) return;
     classConfirmed = true;
-    player.name = nameInput.value;
-    player.charClass = selectedClass;
-
-    if (selectedClass === "Knight"){
-        player.health = getRandomInt(17,26);
-        player.attackRange = [12,20];
-        player.potions = 3;
-    }
-    else if (selectedClass === "Magician"){
-        player.health = getRandomInt(10,20);
-        player.attackRange = [14,25];
-        player.potions = 5;
-    }
-    else{
-        player.health = getRandomInt(26,34);
-        player.attackRange = [3,10];
-        player.potions = 3;
-    }
+    player = initPlayer(nameInput.value, selectedClass);
     updateCharacterCard();
 });
 
-let currentEnemy;
-const attackButton = document.getElementById("attackButton");
-const defendButton = document.getElementById("defendButton");
-const healButton = document.getElementById("healButton");
+// Battle UI
 
 function updateBattleUI(){
-    document.getElementById("playerName").textContent = player.name;
-    document.getElementById("playerHealth").textContent = player.health;
-    document.getElementById("playerPotions").textContent = player.potions;
-    document.getElementById("enemyName").textContent = currentEnemy.name;
-    document.getElementById("enemyHealth").textContent = currentEnemy.health
+    document.getElementById('playerName').textContent = player.name;
+    document.getElementById('playerHealth').textContent = player.health;
+    document.getElementById('playerPotions').textContent = player.potions;
+    document.getElementById('enemyName').textContent = currentEnemy.name;
+    document.getElementById('enemyHealth').textContent = currentEnemy.health
 
     const playerPercent = player.maxHealth > 0 ? (player.health / player.maxHealth) * 100 : 0;
-    const enemyPercent = player.maxHealth > 0 ? (currentEnemy.health / currentEnemy.maxHealth) * 100: 0;
+    const enemyPercent = currentEnemy.maxHealth > 0 ? (currentEnemy.health / currentEnemy.maxHealth) * 100: 0;
 
     document.getElementById('playerHealthBar').style.width = playerPercent + '%';
     document.getElementById('enemyHealthBar').style.width = enemyPercent + '%';
@@ -186,55 +223,39 @@ function toggleButtons(disabled){
     healButton.disabled = disabled;
 }
 
-const beginAdventureButton = document.getElementById("beginAdventureButton");
-beginAdventureButton.addEventListener("click", startGame);
+function showActionButtons(visible) {
+    const display = visible ? 'inline-block' : 'none';
+    attackButton.style.display = display;
+    defendButton.style.display = display;
+    healButton.style.display = display;
+}
+
+beginAdventureButton.addEventListener('click', startGame);
 
 async function startGame() {
-    player.name = nameInput.value;
-    player.charClass = selectedClass;
-    player.maxHealth = player.health;
-
-    if (selectedClass === 'Knight'){
-        player.health = getRandomInt(17, 26);
-        player.attackRange = [12, 20];
-    } else if (selectedClass === "Magician"){
-        player.health = getRandomInt(10, 20);
-        player.attackRange = [14, 25];
-    } else if (selectedClass === "Archer"){
-        player.health = getRandomInt(26, 34);
-        player.attackRange = [3,10];
-    }
-    document.getElementById("startScreen").style.display = "none";
-    document.getElementById("battleScreen").style.display = "block";
-    await writeSlowly(
-        `${player.name} the ${player.charClass} begins their adventure!`
-    );
-    currentEnemy = spawnRandomEnemy();
-    startEncounter(currentEnemy);
-    updateBattleUI();
-};
+    startScreen.style.display = 'none';
+    battleScreen.style.display = 'block';
+    await writeSlowly(`${player.name} the ${player.charClass} begins their adventure!`);
+    startEncounter(spawnRandomEnemy());
+}
 
 async function startEncounter(enemy){
     currentEnemy = enemy
     updateBattleUI();
     
-    let enemyType = currentEnemy.charClass === player.charClass ? "another" : "a";
+    const enemyType = currentEnemy.charClass === player.charClass ? "another" : "a";
     await writeSlowly(`${player.name} sees ${enemyType} ${currentEnemy.name}!`);
     toggleButtons(false);
 }
 
-
 async function enemyTurn(){
-
-    await sleep(600);
+    await sleep(enemy_attack_delay);
     await currentEnemy.attack(player);
     updateBattleUI();
 
     if (player.health <= 0){
         await writeSlowly(`Defeat! ${player.name} has fallen in battle Game over.`);
-        document.getElementById('attackButton').style.display = 'none';
-        document.getElementById('defendButton').style.display = 'none';
-        document.getElementById('healButton').style.display = 'none';
+        showActionButtons(false);
         document.getElementById('playAgainButton').style.display = 'inline-block';
     }
     else {
@@ -244,18 +265,13 @@ async function enemyTurn(){
 
 async function handleEnemyDefeat(){
     await writeSlowly(`Victory! ${currentEnemy.name} has been defeated!`);
-
     enemiesDefeated++;
 
-    if (enemiesDefeated < maxEnemies){
+    if (enemiesDefeated < max_enemies){
         await writeSlowly(`Will you challenge the next foe or flee?`);
-        attackButton.style.display = 'none';
-        defendButton.style.display = 'none';
-        healButton.style.display = 'none';
-
+        showActionButtons(false);
         document.getElementById('choiceButtons').style.display = 'block';
-    }
-    else {
+    } else {
         await writeSlowly(`All enemies have been defeated! Congratulations, ${player.name}, you win!`);
         toggleButtons(true);
         document.getElementById('playAgainButton').style.display = 'inline-block';
@@ -264,13 +280,11 @@ async function handleEnemyDefeat(){
 
 document.getElementById('nextFoeButton').addEventListener('click', async () => {
     document.getElementById('choiceButtons').style.display = 'none';
-    attackButton.style.display = 'inline-block';
-    defendButton.style.display = 'inline-block';
-    healButton.style.display = 'inline-block';
+    showActionButtons(true);
 
     await writeSlowly(`${player.name} bravely steps forward and challenges the next foe!`)
-    await sleep(1000);
-    startEncounter(enemy2);
+    await sleep(next_foe_delay);
+    startEncounter(spawnRandomEnemy());
 });
 
 document.getElementById('fleeButton').addEventListener('click', async () => {
@@ -285,17 +299,16 @@ attackButton.addEventListener('click', async () => {
     await player.attack(currentEnemy);
     updateBattleUI();
 
-    if (currentEnemy.health <= 0){
+    if (currentEnemy.health <= 0) {
         await handleEnemyDefeat();
-    }
-    else {
+    } else {
         await enemyTurn();
     }
 });
 
 defendButton.addEventListener('click', async () => {
     toggleButtons(true);
-    player.isDefending = false;
+    player.isDefending = true;
 
     await writeSlowly(`${player.name} brace for impact! Damage will be halved.`);
     await enemyTurn();
@@ -305,35 +318,35 @@ healButton.addEventListener('click', async () => {
     toggleButtons(true);
     player.isDefending = false;
     
-    if (player.potions > 0){
-        let healingAmount = getRandomInt(10, 20);
-        player.health += Math.min(player.health + healingAmount, player.maxHealth);
+    if (player.potions > 0) {
+        const healingAmount = getRandomInt(15, 25);
+        player.health = Math.min(player.health + healingAmount, player.maxHealth);
         player.potions -= 1;
 
         await writeSlowly(`${player.name} used a healing potion and restored ${healingAmount} health!`)
         updateBattleUI();
         await enemyTurn();
-    }
-    else {
+    } else {
         await writeSlowly('No healing potions left!')
         toggleButtons(false)
     }
 });
 
-function spawnRandomEnemy(){
-    const template = enemyLibrary[Math.floor(Math.random() * enemyLibrary.length)];
-    const health = getRandomInt(template.healthRange[0], template.healthRange[1]);
-    return new Character(template.name, health, template.attackRange, template.charClass, 0);
-};
+// Reset/Play Again
 
 function resetGame() {
     battleScreen.style.display = 'none';
-    document.getElementById('startScreen').style.display = 'inline-block';
-    document.getElementById('battleScreen').style.display = 'none';
+    startScreen.style.display = '';
     document.getElementById('playAgainButton').style.display = 'none';
-    enemy1.health = enemy1.maxHealth;
-    currentEnemy = spawnRandomEnemy();
-    updateBattleUI();
-};
+    document.getElementById('choiceButtons').style.display = 'none';
+    logBox.innerHTML = '';
+
+    showActionButtons(true);
+    resetClassSelectionUI();
+
+    enemiesDefeated = 0;
+    player = new Character('', 0, [0,0], '', 0);
+    currentEnemy = undefined;
+}
 
 document.getElementById('playAgainButton').addEventListener('click', resetGame);

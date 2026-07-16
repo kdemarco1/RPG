@@ -52,36 +52,56 @@ function updateActor(actor, target) {
 function drawActor(actor) {
     if (!actor) return;
     ctx.save();
+    ctx.globalAlpha = 1.0;
+    // Ground Shadow
     ctx.beginPath();
-    ctx.ellipse(actor.x, actor.baseY + 50, 40, 15, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgb(0, 0, 0, 0.2)';
+    ctx.ellipse(actor.x, actor.baseY + 45, 35, 10, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgb(0, 0, 0, 0.5)';
     ctx.fill();
-    ctx.fillStyle = actor.visualState === 'hurt' ? '#e74c3c' : '#2c3e50';
-    ctx.strokeStyle = '#ecf0f1';
-    ctx.lineWidth = 3;
-    const width = 100;
-    const height = 130;
-    const rx = actor.x - width / 2;
-    const ry = actor.y - height / 2;
-    ctx.fillRect(rx, ry, width, height);
-    ctx.strokeRect(rx, ry, width, height);
-    ctx.font = '48px Arial';
+    // Status
+    if (actor.visualState === 'hurt') {
+        ctx.shadowColor = '#e74c3c';
+        ctx.shadowBlur = 20;
+    }
+    // Non-Transparent background for emoji
+    const halo = ctx.createRadialGradient(actor.x, actor.y, 0, actor.x, actor.y, 25);
+    halo.addColorStop(0, '#110c22');
+    halo.addColorStop(0.6, '#110c22')
+    halo.addColorStop(1, 'rgba(17, 12, 34, 0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(actor.x, actor.y, 25, 0, Math.PI * 2);
+    ctx.fill();
+    // Sprite
+    ctx.font = '64px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const emoji = portraits[actor.charClass];
-    ctx.fillText(emoji, actor.x, actor.y - 10);
+    ctx.fillText(emoji, actor.x, actor.y);
+    ctx.shadowBlur = 0;
+    // Name Text
     ctx.fillStyle = '#ecf0f1'
     ctx.font = 'bold 14px monospace';
-    ctx.fillText(actor.name || '???', actor.x, actor.y + 45);
+    ctx.fillText(actor.name || '???', actor.x, actor.y + 50);
+    // Inventory Potions
+    if (actor.potions !== undefined) {
+        ctx.fillStyle = '#d8b4fe'
+        ctx.font = 'bold 11px monospace';
+        ctx.fillText(`🧪 x${actor.potions}`, actor.x, actor.y + 68);
+    }
+    // Dynamic Health Bar
     const hpPercent = actor.maxHealth > 0 ? Math.max(0, actor.health / actor.maxHealth) : 0;
-    const barWidth = 80;
-    const barHeight = 8;
+    const barWidth = 70;
+    const barHeight = 6;
     const barX = actor.x - barWidth / 2;
-    const barY = ry - 20;
+    const barY = actor.y - 55;
+    //
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(barX, barY, barWidth, barHeight);
+    // Health color change
     ctx.fillStyle = hpPercent < 0.3 ? '#e74c3c' : '#2ecc71';
     ctx.fillRect(barX, barY, barWidth * hpPercent, barHeight);
+    // Border Outline
     ctx.strokeStyle = '#7f8c8d';
     ctx.lineWidth = 1;
     ctx.strokeRect(barX, barY, barWidth, barHeight);
@@ -90,11 +110,42 @@ function drawActor(actor) {
 
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = '#7f8c8d'
-    ctx.lineWidth = 4;
+    // Background
+    const skyGradient = ctx.createLinearGradient(0, 0, 0, 310);
+    skyGradient.addColorStop(0, '#0f172a');
+    skyGradient.addColorStop(0.6, '#1e1b4b');
+    skyGradient.addColorStop(1, '#4c1d95');
+    ctx.fillStyle = skyGradient;
+    ctx.fillRect(0, 0, canvas.width, 310);
+    // Stars
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    const stars = [[120, 50], [240, 80], [380, 40], [520, 90], [680, 60]];
+    stars.forEach(star => {
+        ctx.beginPath();
+        ctx.arc(star[0], star[1], 2, 0, Math.PI * 2);
+        ctx.fill();
+        });
+    // Mountains
+    ctx.fillStyle = '#110c22';
     ctx.beginPath();
-    ctx.moveTo(50, 310);
-    ctx.lineTo(750, 310);
+    ctx.moveTo(0, 310);
+    ctx.lineTo(150, 240);
+    ctx.lineTo(300, 310);
+    ctx.lineTo(450, 220);
+    ctx.lineTo(600, 310);
+    ctx.lineTo(720, 260);
+    ctx.lineTo(800, 310);
+    ctx.closePath();
+    ctx.fill();
+    // Arena Floor
+    ctx.fillStyle = '#11131870';
+    ctx.fillRect(0, 310, canvas.width, canvas.height - 310);
+    // Horizon
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, 310);
+    ctx.lineTo(canvas.width, 310);
     ctx.stroke();
 
     if (typeof player !== 'undefined' && player.health > 0) {

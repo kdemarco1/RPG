@@ -5,115 +5,56 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simple RPG</title>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@4.2.1/dist/phaser.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
     <div id="game">
-
         <h1>⚔️ Welcome to Simple RPG! ⚔️</h1>
-
         <!-- Character Creation -->
         <section id="startScreen">
-
             <h2>Create Your Hero</h2>
-
             <div id="creationArea">
-
                 <div id="classInfo">
-
                     <h2 id="selectedTitle">Choose a Class</h2>
-
                     <div id="portrait">
                     </div>
-
                     <div id="classDescription">Each character will have different health and attack power</div>
-                    
-                    <p id="classStats">
-                    </p>
-
+                    <p id="classStats"></p>
                     <button id="confirmClassButton">Confirm Class</button>
-
                     <button id="beginAdventureButton">Begin Adventure</button>
-
                 </div>
                 
                 <div id="creationControls">
-
                     <label>Character Name:</label>
-
                     <input id="nameInput" type="text" placeholder="Enter hero name">
-
                     <h3>Select Class</h3>
-
                     <button class="classButton" data-class="Knight"> Knight</button>
-
                     <button class="classButton" data-class="Magician">Magician</button>
-
                     <button class="classButton" data-class="Archer">Archer</button>
-
                 </div>
             </div>
         </section>
 
         <!-- Main Game Screen -->
         <section id="battleScreen" style="display: none;">
-
             <div id="characters">
-
-                <div class="card">
-                    <h2>Hero</h2>
-                    <p>
-                        Name: <span id="playerName"></span>
-                    </p>
-                    <div class="healthBar">
-                        <div id="playerHealthBar"></div>
-                    </div>
-                    <p>
-                        HP: <span id="playerHealth"></span>
-                    </p>
-                    <p>
-                        🧪 Potions: <span id="playerPotions"></span>
-                    </p>
-                </div>
-
-        <div class="card">
-            <h2>Enemy</h2>
-            <p>
-                <span id="enemyName"></span>
-            </p>
-            <div class="healthBar">
-
-                <div id="enemyHealthBar"></div>
-            </div>
-            <p>
-                HP:
-                <span id="enemyHealth"></span>
-            </p>
-        </div>
-        
     </div>
-    
+
     <div id="log">
     </div>
-
     <div id="actions">
-
         <button id="attackButton">⚔️ Attack</button>
         <button id="defendButton">🛡️ Defend</button>
         <button id="healButton">🧪 Use Health Potion</button>
-
         <div id="choiceButtons" style="display: none;">
             <button id="nextFoeButton">⚔️ Fight Next Foe</button>
             <button id="fleeButton">🏃 Flee</button>
         </div>
-
         <button id="playAgainButton" style="display: none;">Play Again</button>
-        
     </div>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
     </section>
     </div>
     <script src="rpg.js"></script>

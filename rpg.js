@@ -2,10 +2,10 @@
 
 // Constants
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const enemy_attack_delay = 600;
-const next_foe_delay= 1000;
-const text_delay_multiplier = 20;
-const max_text_delay = 3000;
+const enemy_attack_delay = 1000;
+const next_foe_delay= 1800;
+const text_delay_multiplier = 40;
+const max_text_delay = 4000;
 const max_enemies = 3;
 
 // DOM References
@@ -31,10 +31,7 @@ function getRandomInt(min, max) {
 }
 
 async function writeSlowly(text, delayMultiplier = text_delay_multiplier) {
-    const message = document.createElement("p");
-    message.textContent = text;
-    logBox.appendChild(message);
-    logBox.scrollTop = logBox.scrollHeight;
+    logBox.textContent = text;
     await sleep(Math.min(delayMultiplier * text.length, max_text_delay)); 
 }
 
@@ -154,6 +151,7 @@ class Character {
 
     async takeDamage(damageValue) {
         this.health = Math.max(0, this.health - damageValue);
+        this.pendingDamageEffect = damageValue;
 
         if (this.health <= 0) {
             this.visualState = 'dead';
@@ -217,19 +215,21 @@ confirmClassButton.addEventListener('click', () => {
 // Battle UI
 
 function updateBattleUI(){
-    document.getElementById('playerName').textContent = player.name;
-    document.getElementById('playerHealth').textContent = player.health;
-    document.getElementById('playerPotions').textContent = player.potions;
-    document.getElementById('enemyName').textContent = currentEnemy.name;
-    document.getElementById('enemyHealth').textContent = currentEnemy.health
-
-    const playerPercent = player.maxHealth > 0 ? (player.health / player.maxHealth) * 100 : 0;
-    const enemyPercent = currentEnemy.maxHealth > 0 ? (currentEnemy.health / currentEnemy.maxHealth) * 100: 0;
-
-    document.getElementById('playerHealthBar').style.width = playerPercent + '%';
-    document.getElementById('enemyHealthBar').style.width = enemyPercent + '%';
-    document.getElementById('playerHealthBar').style.backgroundColor = playerPercent < 30 ? '#e74c3c' : '#2ecc71';
-    document.getElementById('enemyHealthBar').style.backgroundColor = enemyPercent < 30 ? '#e74c3c' : '#2ecc71';
+    const setElementText = (id, value) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value;
+        }
+    };
+    if (player) {
+    setElementText('playerName', player.name);
+    setElementText('playerHealth', player.health);
+    setElementText('playerPotions', player.potions);
+    }
+    if (currentEnemy) {
+    setElementText('enemyName', currentEnemy.name);
+    setElementText('enemyHealth', currentEnemy.health);
+    }
 }
 
 function toggleButtons(disabled){
@@ -251,7 +251,7 @@ async function startGame() {
     startScreen.style.display = 'none';
     battleScreen.style.display = 'block';
     player.baseX = 150;
-    player.baseY = 350;
+    player.baseY = 250;
     player.x = player.baseX;
     player.y = player.baseY;
     await writeSlowly(`${player.name} the ${player.charClass} begins their adventure!`);
@@ -261,10 +261,10 @@ async function startGame() {
 async function startEncounter(enemy){
     currentEnemy = enemy
     currentEnemy.baseX = 600;
-    currentEnemy.baseY = 350;
+    currentEnemy.baseY = 250;
     currentEnemy.x = currentEnemy.baseX;
     currentEnemy.y = currentEnemy.baseY;
-    
+
     updateBattleUI();
     
     const enemyType = currentEnemy.charClass === player.charClass ? "another" : "a";
@@ -347,6 +347,8 @@ healButton.addEventListener('click', async () => {
         player.health = Math.min(player.health + healingAmount, player.maxHealth);
         player.potions -= 1;
 
+        player.pendingDamageEffect = `+${healingAmount}`;
+        
         await writeSlowly(`${player.name} used a healing potion and restored ${healingAmount} health!`)
         updateBattleUI();
         await enemyTurn();

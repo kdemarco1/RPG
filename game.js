@@ -1,5 +1,6 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+const damagePopUps = [];
 
 const portraits = {
     Knight: '🗡️',
@@ -13,6 +14,12 @@ const portraits = {
 
 function updateActor(actor, target) {
     if (!actor) return;
+
+    if (actor.pendingDamageEffect !== undefined) {
+        const isPlayer = (actor === player);
+        spawnDamagePopup(actor.baseX, actor.baseY, actor.pendingDamageEffect, isPlayer);
+        delete actor.pendingDamageEffect;
+    }
 
     if (actor.stateTimer > 0) {
         actor.stateTimer--;
@@ -65,7 +72,19 @@ function drawActor(actor) {
     ctx.fillText(emoji, actor.x, actor.y - 10);
     ctx.fillStyle = '#ecf0f1'
     ctx.font = 'bold 14px monospace';
-    ctx.fillText(actor.breathingAmplitude || player.name, actor.x, actor.y + 45);
+    ctx.fillText(actor.name || '???', actor.x, actor.y + 45);
+    const hpPercent = actor.maxHealth > 0 ? Math.max(0, actor.health / actor.maxHealth) : 0;
+    const barWidth = 80;
+    const barHeight = 8;
+    const barX = actor.x - barWidth / 2;
+    const barY = ry - 20;
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+    ctx.fillStyle = hpPercent < 0.3 ? '#e74c3c' : '#2ecc71';
+    ctx.fillRect(barX, barY, barWidth * hpPercent, barHeight);
+    ctx.strokeStyle = '#7f8c8d';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(barX, barY, barWidth, barHeight);
     ctx.restore();
 }
 
@@ -74,8 +93,8 @@ function gameLoop() {
     ctx.strokeStyle = '#7f8c8d'
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(50, 410);
-    ctx.lineTo(750, 410);
+    ctx.moveTo(50, 310);
+    ctx.lineTo(750, 310);
     ctx.stroke();
 
     if (typeof player !== 'undefined' && player.health > 0) {
@@ -90,6 +109,51 @@ function gameLoop() {
     if (typeof currentEnemy !== 'undefined') {
         drawActor(currentEnemy);
     }
+
+    for (let i = damagePopUps.length - 1; i >= 0; i--) {
+        const popup = damagePopUps[i];
+        popup.y += popup.velocityY;
+        popup.alpha -= 1 / popup.life;
+        popup.life--;
+
+        if (popup.life <= 0) {
+            damagePopUps.splice(i, 1);
+            continue
+        }
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, popup.alpha);
+        ctx.fillStyle = popup.color;
+        ctx.font = 'bold 24px monospace';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = 'rgb(0, 0, 0, 1)';
+        ctx.shadowBlur = 4;
+        ctx.fillText(popup.text, popup.x, popup.y);
+        ctx.restore();
+    }
     requestAnimationFrame(gameLoop);
+}
+
+
+function spawnDamagePopup(x, y, amount, isPlayer) {
+    let text = `-${amount}`;
+    let color = isPlayer ? '#e74c3c' : '#f1c40f';
+
+    if (typeof amount === 'string' && amount.startsWith('+')) {
+        text = amount;
+        color = '#2ecc71';
+    } else if (typeof amount === 'number' && amount < 0) {
+        text = `+${Math.abs(amount)}`;
+        color = '#2ecc71';
+    }
+    
+    damagePopUps.push({
+        x: x,
+        y: y - 50,
+        text: text,
+        color: color,
+        alpha: 1.0,
+        velocityY: -1.8,
+        life: 100
+    });
 }
 gameLoop();

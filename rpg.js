@@ -123,6 +123,12 @@ class Character {
         this.charClass = charClass;
         this.potions = potions;
         this.isDefending = false;
+        this.x = 0;
+        this.y = 0;
+        this.baseX = 0;
+        this.baseY = 0;
+        this.visualState = 'idle';
+        this.stateTimer = 0;
     }
 
     get attackLevel() {
@@ -131,7 +137,9 @@ class Character {
 
     async attack(target) {
         let currentDamage = this.attackLevel;
-        
+        this.visualState = 'attacking';
+        this.stateTimer = 15;
+
         if (target.isDefending) {
             currentDamage = Math.floor(currentDamage / 2);
             await writeSlowly(`${target.name} blocked the attack from ${this.name}! ${target.name} takes ${currentDamage} damage.`);
@@ -146,6 +154,13 @@ class Character {
 
     async takeDamage(damageValue) {
         this.health = Math.max(0, this.health - damageValue);
+
+        if (this.health <= 0) {
+            this.visualState = 'dead';
+        } else {
+            this.visualState = 'hurt';
+            this.stateTimer = 20;
+        }
         await writeSlowly(`${this.name}'s health is now ${this.health}`);
     }
 }
@@ -235,12 +250,21 @@ beginAdventureButton.addEventListener('click', startGame);
 async function startGame() {
     startScreen.style.display = 'none';
     battleScreen.style.display = 'block';
+    player.baseX = 150;
+    player.baseY = 350;
+    player.x = player.baseX;
+    player.y = player.baseY;
     await writeSlowly(`${player.name} the ${player.charClass} begins their adventure!`);
     startEncounter(spawnRandomEnemy());
 }
 
 async function startEncounter(enemy){
     currentEnemy = enemy
+    currentEnemy.baseX = 600;
+    currentEnemy.baseY = 350;
+    currentEnemy.x = currentEnemy.baseX;
+    currentEnemy.y = currentEnemy.baseY;
+    
     updateBattleUI();
     
     const enemyType = currentEnemy.charClass === player.charClass ? "another" : "a";

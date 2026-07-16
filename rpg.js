@@ -254,7 +254,7 @@ async function enemyTurn(){
     updateBattleUI();
 
     if (player.health <= 0){
-        await writeSlowly(`Defeat! ${player.name} has fallen in battle Game over.`);
+        await writeSlowly(`Defeat! ${player.name} has fallen in battle. Game over`);
         showActionButtons(false);
         document.getElementById('playAgainButton').style.display = 'inline-block';
     }
@@ -310,7 +310,7 @@ defendButton.addEventListener('click', async () => {
     toggleButtons(true);
     player.isDefending = true;
 
-    await writeSlowly(`${player.name} brace for impact! Damage will be halved.`);
+    await writeSlowly(`${player.name} brace for impact! Damage will be halved`);
     await enemyTurn();
 });
 

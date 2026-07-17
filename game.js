@@ -51,38 +51,68 @@ function updateActor(actor, target) {
 
 function drawActor(actor) {
     if (!actor) return;
+    if (actor.deathComplete) return;
     ctx.save();
     ctx.globalAlpha = 1.0;
+    // Death Animation
+    let shadowAlpha = 0.5;
+    let spriteAlpha = 1.0;
+    let scale = 1.0;
+    let rotation = 0;
+    let yOffset = 0;
+
+    if (actor.health <= 0) {
+        if (actor.deathTimer === undefined) actor.deathTimer = 0;
+        actor.deathTimer++;
+
+        let progress = Math.min(1, actor.deathTimer / 45);
+        shadowAlpha = 0.5 * (1 - progress)
+        spriteAlpha = 1 - progress;
+        scale = 1 - progress;
+        rotation = progress * Math.PI * 1.5;
+        yOffset = progress * 40;
+
+        if (actor.deathTimer >= 45) {
+            actor.deathComplete = true;
+        }
+    }
     // Ground Shadow
     ctx.beginPath();
     ctx.ellipse(actor.x, actor.baseY + 45, 35, 10, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgb(0, 0, 0, 0.5)';
+    ctx.fillStyle = `rgb(0, 0, 0, ${shadowAlpha})`;
     ctx.fill();
+    // Death Effect
+    ctx.translate(actor.x, actor.y + yOffset);
+    ctx.rotate(rotation);
+    ctx.scale(scale, scale);
+    ctx.globalAlpha = spriteAlpha;
     // Status
-    if (actor.visualState === 'hurt') {
+    if (actor.visualState === 'hurt' && actor.health > 0) {
         ctx.shadowColor = '#e74c3c';
         ctx.shadowBlur = 20;
     }
     // Non-Transparent background for emoji
-    const halo = ctx.createRadialGradient(actor.x, actor.y, 0, actor.x, actor.y, 25);
+    const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, 25);
     halo.addColorStop(0, '#110c22');
     halo.addColorStop(0.6, '#110c22')
     halo.addColorStop(1, 'rgba(17, 12, 34, 0)');
     ctx.fillStyle = halo;
     ctx.beginPath();
-    ctx.arc(actor.x, actor.y, 25, 0, Math.PI * 2);
+    ctx.arc(0, 0, 25, 0, Math.PI * 2);
     ctx.fill();
     // Sprite
     ctx.font = '64px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const emoji = portraits[actor.charClass];
-    ctx.fillText(emoji, actor.x, actor.y);
+    ctx.fillText(emoji, 0, 0);
+    ctx.fillText(emoji, 0, 0);
     ctx.shadowBlur = 0;
     // Name Text
+    if (actor.health > 0) {
     ctx.fillStyle = '#ecf0f1'
     ctx.font = 'bold 14px monospace';
-    ctx.fillText(actor.name || '???', actor.x, actor.y + 50);
+    ctx.fillText(actor.name || '???', 0, 50);
     // Inventory Potions
     if (actor.potions !== undefined) {
         ctx.fillStyle = '#d8b4fe'
@@ -93,8 +123,8 @@ function drawActor(actor) {
     const hpPercent = actor.maxHealth > 0 ? Math.max(0, actor.health / actor.maxHealth) : 0;
     const barWidth = 70;
     const barHeight = 6;
-    const barX = actor.x - barWidth / 2;
-    const barY = actor.y - 55;
+    const barX = 0 - barWidth / 2;
+    const barY = 0 - 55;
     //
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(barX, barY, barWidth, barHeight);
@@ -105,6 +135,7 @@ function drawActor(actor) {
     ctx.strokeStyle = '#7f8c8d';
     ctx.lineWidth = 1;
     ctx.strokeRect(barX, barY, barWidth, barHeight);
+    }
     ctx.restore();
 }
 
@@ -151,13 +182,13 @@ function gameLoop() {
     if (typeof player !== 'undefined' && player.health > 0) {
         updateActor(player, currentEnemy);
     }
-    if (typeof currentEnemy !== 'undefined') {
+    if (typeof currentEnemy !== 'undefined' && currentEnemy.health > 0) {
         updateActor(currentEnemy, player);
     }
-    if (typeof player !== 'undefined' && player.health > 0) {
+    if (typeof player !== 'undefined' && !player.deathComplete) {
         drawActor(player);
     }
-    if (typeof currentEnemy !== 'undefined') {
+    if (typeof currentEnemy !== 'undefined' && !currentEnemy.deathComplete) {
         drawActor(currentEnemy);
     }
 

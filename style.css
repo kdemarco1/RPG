@@ -20,20 +20,11 @@ h1 {
 
 #log {
     margin-top: 20px;
-    height: 40px;
-    line-height: 40px;
-    background-color: #1a1a1a;
-    color: #00ff00;
-    overflow: hidden;
-    padding: 0 15px;
-    border: 2px solid #333;
-    border-radius: 6px;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    height: 250px;
+    background: black;
+    overflow-y: auto;
+    padding: 15px;
     font-family: monospace;
-    font-size: 16px;
-    font-weight: bold;
-    text-align: center;
 }
 
 button {
@@ -51,6 +42,13 @@ button:hover {
 #characters {
     display: flex;
     gap: 20px;
+}
+
+.card {
+    flex: 1;
+    background: #333;
+    padding: 15px;
+    border-radius: 10px;
 }
 
 #actions {
@@ -116,20 +114,4 @@ button:hover {
     width: 100%;
     background-color: #2ecc71;
     transition: width 0.5s ease-in-out;
-}
-
-#canvas-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: #111;
-    border: 3px solid #34495e;
-    border-radius: 8px;
-    padding: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-}
-
-#gameCanvas {
-    background-color: #1b2631;
-    display: block;
 }

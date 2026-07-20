@@ -106,8 +106,14 @@ function drawActor(actor) {
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
     const emoji = portraits[actor.charClass];
-    ctx.fillText(emoji, 0, 0);
-    ctx.fillText(emoji, 0, 0);
+    let xNudge = 0;
+    let yNudge = 0;
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (actor === player && isMobile) {
+        xNudge = -4;
+    }
+    ctx.fillText(emoji, xNudge, yNudge);
+    ctx.fillText(emoji, xNudge, yNudge);
     ctx.shadowBlur = 0;
     // Name Text
     if (actor.health > 0) {

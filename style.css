@@ -39,7 +39,7 @@ h1 {
 
 #log {
     margin: 15px 0;
-    height: 40px;
+    height: auto;
     line-height: 40px;
     background-color: #1a1a1a;
     color: #00ff00;
@@ -48,13 +48,15 @@ h1 {
     min-height: 50px;
     border: 2px solid #333;
     border-radius: 6px;
-    white-space: nowrap;
+    white-space: normal;
     text-overflow: ellipsis;
     font-family: monospace;
     font-size: 15px;
     font-weight: bold;
     text-align: center;
     word-break: break-word;
+    overflow-wrap: break-word;
+    overflow: visible;
 }
 
 button {

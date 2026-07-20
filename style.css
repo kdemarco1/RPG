@@ -1,17 +1,32 @@
 body {
+    margin: 0;
+    padding: 10px;
+    box-sizing: border-box;
     background: #151515;
     color: white;
     font-family: Arial, sans-serif;
     display: flex;
     justify-content: center;
-    padding: 30px;
+    align-items: center;
+    min-height: 100vh;
 }
 
 #game {
-    width: 800px;
+    width: 100%;
+    max-width: 800px;
     background: #262626;
-    border-radius: 15px;
-    padding: 25px;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+canvas#gameCanvas {
+    width: 100%;
+    max-width: 800px;
+    height: auto;
+    display: block;
+    margin: 15px auto;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgga(76, 29, 149, 0.5);
 }
 
 h1 {
@@ -19,29 +34,34 @@ h1 {
 }
 
 #log {
-    margin-top: 20px;
+    margin: 15px 0;
     height: 40px;
     line-height: 40px;
     background-color: #1a1a1a;
     color: #00ff00;
     overflow: hidden;
-    padding: 0 15px;
+    padding: 10px;
+    min-height: 50px;
     border: 2px solid #333;
     border-radius: 6px;
     white-space: nowrap;
     text-overflow: ellipsis;
     font-family: monospace;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: bold;
     text-align: center;
+    word-break: break-word;
 }
 
 button {
-    padding: 12px 18px;
+    padding: 12px 20px;
     margin: 5px;
     font-size: 16px;
+    font-weight: bold;
     cursor: pointer;
-    border-radius: 8px;
+    border-radius: 6px;
+    border: none;
+    touch-action: manipulation;
 }
 
 button:hover {

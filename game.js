@@ -101,7 +101,7 @@ function drawActor(actor) {
     ctx.arc(0, 0, 25, 0, Math.PI * 2);
     ctx.fill();
     // Sprite
-    ctx.font = '64px Arial';
+    ctx.font = '64px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const emoji = portraits[actor.charClass];

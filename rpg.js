@@ -166,11 +166,11 @@ class Character {
 let player = new Character('', 0, [0, 0], '', 0);
 
 const enemyLibrary = [
-    {name: 'Magician', healthRange: [40,48], attackRange: [14, 20], charClass: 'Magician'},
-    {name: 'Zombie', healthRange: [32,40], attackRange: [6, 12], charClass: 'Zombie'},
-    {name: 'Ghoul', healthRange: [24,48], attackRange: [6, 14], charClass: 'Ghoul'},
-    {name: 'Mimic', healthRange: [38,48], attackRange: [10, 22], charClass: 'Mimic'},
-    {name: 'Basilisk', healthRange: [40,48], attackRange: [12, 20], charClass: 'Basilisk'},
+    {name: 'Magician', healthRange: [40,48], attackRange: [14, 20], charClass: 'Magician', potions: 5},
+    {name: 'Zombie', healthRange: [32,40], attackRange: [6, 12], charClass: 'Zombie', potions: 0},
+    {name: 'Ghoul', healthRange: [24,48], attackRange: [6, 14], charClass: 'Ghoul', potions: 3},
+    {name: 'Mimic', healthRange: [38,48], attackRange: [10, 22], charClass: 'Mimic', potions: 1},
+    {name: 'Basilisk', healthRange: [40,48], attackRange: [12, 20], charClass: 'Basilisk', potions: 2},
 ];
 
 const playerConfigs = {
@@ -189,7 +189,8 @@ function initPlayer(name, charClass) {
 function spawnRandomEnemy(){
     const template = enemyLibrary[Math.floor(Math.random() * enemyLibrary.length)];
     const health = getRandomInt(template.healthRange[0], template.healthRange[1]);
-    return new Character(template.name, health, template.attackRange, template.charClass, 0);
+    const enemyPotions = template.potions;
+    return new Character(template.name, health, template.attackRange, template.charClass, template.potions);
 }
 
 // Class Selection listeners
@@ -229,6 +230,7 @@ function updateBattleUI(){
     if (currentEnemy) {
     setElementText('enemyName', currentEnemy.name);
     setElementText('enemyHealth', currentEnemy.health);
+    setElementText('enemyPotions', currentEnemy.potions);
     }
 }
 
@@ -274,7 +276,22 @@ async function startEncounter(enemy){
 
 async function enemyTurn(){
     await sleep(enemy_attack_delay);
-    await currentEnemy.attack(player);
+    const healthPercentage = currentEnemy.health / currentEnemy.maxHealth;
+    let decidedToHeal = false;
+    if (healthPercentage < 0.3 && currentEnemy.potions > 0){
+        if (Math.random() < 0.75) {
+            decidedToHeal = true;
+        }
+    }
+    if (decidedToHeal) {
+        const healingAmount = getRandomInt(15, 25);
+        currentEnemy.health = Math.min(currentEnemy.health + healingAmount, currentEnemy.maxHealth);
+        currentEnemy.potions -= 1;
+        currentEnemy.pendingDamageEffect = `+${healingAmount}`;
+        await writeSlowly(`${currentEnemy.name} drank a potion, restoring ${healingAmount} HP!`);
+    } else {
+        await currentEnemy.attack(player);
+    }
     updateBattleUI();
 
     if (player.health <= 0){

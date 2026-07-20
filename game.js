@@ -114,10 +114,10 @@ function drawActor(actor) {
     ctx.font = 'bold 14px monospace';
     ctx.fillText(actor.name || '???', 0, 50);
     // Inventory Potions
-    if (actor.potions !== undefined) {
+    if (actor.potions > 0) {
         ctx.fillStyle = '#d8b4fe'
         ctx.font = 'bold 11px monospace';
-        ctx.fillText(`🧪 x${actor.potions}`, actor.x, actor.y + 68);
+        ctx.fillText(`🧪 x${actor.potions}`, 0, 68);
     }
     // Dynamic Health Bar
     const hpPercent = actor.maxHealth > 0 ? Math.max(0, actor.health / actor.maxHealth) : 0;
@@ -169,15 +169,8 @@ function gameLoop() {
     ctx.closePath();
     ctx.fill();
     // Arena Floor
-    ctx.fillStyle = '#11131870';
+    ctx.fillStyle = '#11131970';
     ctx.fillRect(0, 310, canvas.width, canvas.height - 310);
-    // Horizon
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(0, 310);
-    ctx.lineTo(canvas.width, 310);
-    ctx.stroke();
 
     if (typeof player !== 'undefined' && player.health > 0) {
         updateActor(player, currentEnemy);
@@ -234,7 +227,7 @@ function spawnDamagePopup(x, y, amount, isPlayer) {
         text: text,
         color: color,
         alpha: 1.0,
-        velocityY: -1.8,
+        velocityY: -1.5,
         life: 100
     });
 }

@@ -2,10 +2,10 @@
 
 // Constants
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const enemy_attack_delay = 600;
-const next_foe_delay= 1000;
-const text_delay_multiplier = 20;
-const max_text_delay = 3000;
+const enemy_attack_delay = 1000;
+const next_foe_delay= 1800;
+const text_delay_multiplier = 40;
+const max_text_delay = 4000;
 const max_enemies = 3;
 
 // DOM References
@@ -31,10 +31,7 @@ function getRandomInt(min, max) {
 }
 
 async function writeSlowly(text, delayMultiplier = text_delay_multiplier) {
-    const message = document.createElement("p");
-    message.textContent = text;
-    logBox.appendChild(message);
-    logBox.scrollTop = logBox.scrollHeight;
+    logBox.textContent = text;
     await sleep(Math.min(delayMultiplier * text.length, max_text_delay)); 
 }
 
@@ -123,6 +120,12 @@ class Character {
         this.charClass = charClass;
         this.potions = potions;
         this.isDefending = false;
+        this.x = 0;
+        this.y = 0;
+        this.baseX = 0;
+        this.baseY = 0;
+        this.visualState = 'idle';
+        this.stateTimer = 0;
     }
 
     get attackLevel() {
@@ -131,7 +134,9 @@ class Character {
 
     async attack(target) {
         let currentDamage = this.attackLevel;
-        
+        this.visualState = 'attacking';
+        this.stateTimer = 15;
+
         if (target.isDefending) {
             currentDamage = Math.floor(currentDamage / 2);
             await writeSlowly(`${target.name} blocked the attack from ${this.name}! ${target.name} takes ${currentDamage} damage.`);
@@ -146,6 +151,14 @@ class Character {
 
     async takeDamage(damageValue) {
         this.health = Math.max(0, this.health - damageValue);
+        this.pendingDamageEffect = damageValue;
+
+        if (this.health <= 0) {
+            this.visualState = 'dead';
+        } else {
+            this.visualState = 'hurt';
+            this.stateTimer = 20;
+        }
         await writeSlowly(`${this.name}'s health is now ${this.health}`);
     }
 }
@@ -153,11 +166,11 @@ class Character {
 let player = new Character('', 0, [0, 0], '', 0);
 
 const enemyLibrary = [
-    {name: 'Magician', healthRange: [40,48], attackRange: [14, 20], charClass: 'Magician'},
-    {name: 'Zombie', healthRange: [32,40], attackRange: [6, 12], charClass: 'Zombie'},
-    {name: 'Ghoul', healthRange: [24,48], attackRange: [6, 14], charClass: 'Ghoul'},
-    {name: 'Mimic', healthRange: [38,48], attackRange: [10, 22], charClass: 'Mimic'},
-    {name: 'Basilisk', healthRange: [40,48], attackRange: [12, 20], charClass: 'Basilisk'},
+    {name: 'Magician', healthRange: [40,48], attackRange: [14, 20], charClass: 'Magician', potions: 5},
+    {name: 'Zombie', healthRange: [32,40], attackRange: [6, 12], charClass: 'Zombie', potions: 0},
+    {name: 'Ghoul', healthRange: [24,48], attackRange: [6, 14], charClass: 'Ghoul', potions: 3},
+    {name: 'Mimic', healthRange: [38,48], attackRange: [10, 22], charClass: 'Mimic', potions: 1},
+    {name: 'Basilisk', healthRange: [40,48], attackRange: [12, 20], charClass: 'Basilisk', potions: 2},
 ];
 
 const playerConfigs = {
@@ -176,7 +189,8 @@ function initPlayer(name, charClass) {
 function spawnRandomEnemy(){
     const template = enemyLibrary[Math.floor(Math.random() * enemyLibrary.length)];
     const health = getRandomInt(template.healthRange[0], template.healthRange[1]);
-    return new Character(template.name, health, template.attackRange, template.charClass, 0);
+    const enemyPotions = template.potions;
+    return new Character(template.name, health, template.attackRange, template.charClass, template.potions);
 }
 
 // Class Selection listeners
@@ -202,19 +216,22 @@ confirmClassButton.addEventListener('click', () => {
 // Battle UI
 
 function updateBattleUI(){
-    document.getElementById('playerName').textContent = player.name;
-    document.getElementById('playerHealth').textContent = player.health;
-    document.getElementById('playerPotions').textContent = player.potions;
-    document.getElementById('enemyName').textContent = currentEnemy.name;
-    document.getElementById('enemyHealth').textContent = currentEnemy.health
-
-    const playerPercent = player.maxHealth > 0 ? (player.health / player.maxHealth) * 100 : 0;
-    const enemyPercent = currentEnemy.maxHealth > 0 ? (currentEnemy.health / currentEnemy.maxHealth) * 100: 0;
-
-    document.getElementById('playerHealthBar').style.width = playerPercent + '%';
-    document.getElementById('enemyHealthBar').style.width = enemyPercent + '%';
-    document.getElementById('playerHealthBar').style.backgroundColor = playerPercent < 30 ? '#e74c3c' : '#2ecc71';
-    document.getElementById('enemyHealthBar').style.backgroundColor = enemyPercent < 30 ? '#e74c3c' : '#2ecc71';
+    const setElementText = (id, value) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value;
+        }
+    };
+    if (player) {
+    setElementText('playerName', player.name);
+    setElementText('playerHealth', player.health);
+    setElementText('playerPotions', player.potions);
+    }
+    if (currentEnemy) {
+    setElementText('enemyName', currentEnemy.name);
+    setElementText('enemyHealth', currentEnemy.health);
+    setElementText('enemyPotions', currentEnemy.potions);
+    }
 }
 
 function toggleButtons(disabled){
@@ -235,12 +252,21 @@ beginAdventureButton.addEventListener('click', startGame);
 async function startGame() {
     startScreen.style.display = 'none';
     battleScreen.style.display = 'block';
+    player.baseX = 150;
+    player.baseY = 250;
+    player.x = player.baseX;
+    player.y = player.baseY;
     await writeSlowly(`${player.name} the ${player.charClass} begins their adventure!`);
     startEncounter(spawnRandomEnemy());
 }
 
 async function startEncounter(enemy){
     currentEnemy = enemy
+    currentEnemy.baseX = 600;
+    currentEnemy.baseY = 250;
+    currentEnemy.x = currentEnemy.baseX;
+    currentEnemy.y = currentEnemy.baseY;
+
     updateBattleUI();
     
     const enemyType = currentEnemy.charClass === player.charClass ? "another" : "a";
@@ -250,11 +276,26 @@ async function startEncounter(enemy){
 
 async function enemyTurn(){
     await sleep(enemy_attack_delay);
-    await currentEnemy.attack(player);
+    const healthPercentage = currentEnemy.health / currentEnemy.maxHealth;
+    let decidedToHeal = false;
+    if (healthPercentage < 0.3 && currentEnemy.potions > 0){
+        if (Math.random() < 0.75) {
+            decidedToHeal = true;
+        }
+    }
+    if (decidedToHeal) {
+        const healingAmount = getRandomInt(15, 25);
+        currentEnemy.health = Math.min(currentEnemy.health + healingAmount, currentEnemy.maxHealth);
+        currentEnemy.potions -= 1;
+        currentEnemy.pendingDamageEffect = `+${healingAmount}`;
+        await writeSlowly(`${currentEnemy.name} drank a potion, restoring ${healingAmount} HP!`);
+    } else {
+        await currentEnemy.attack(player);
+    }
     updateBattleUI();
 
     if (player.health <= 0){
-        await writeSlowly(`Defeat! ${player.name} has fallen in battle Game over.`);
+        await writeSlowly(`Defeat! ${player.name} has fallen in battle. Game over`);
         showActionButtons(false);
         document.getElementById('playAgainButton').style.display = 'inline-block';
     }
@@ -310,7 +351,7 @@ defendButton.addEventListener('click', async () => {
     toggleButtons(true);
     player.isDefending = true;
 
-    await writeSlowly(`${player.name} brace for impact! Damage will be halved.`);
+    await writeSlowly(`${player.name} brace for impact! Damage will be halved`);
     await enemyTurn();
 });
 
@@ -323,6 +364,8 @@ healButton.addEventListener('click', async () => {
         player.health = Math.min(player.health + healingAmount, player.maxHealth);
         player.potions -= 1;
 
+        player.pendingDamageEffect = `+${healingAmount}`;
+        
         await writeSlowly(`${player.name} used a healing potion and restored ${healingAmount} health!`)
         updateBattleUI();
         await enemyTurn();

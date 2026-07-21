@@ -9,6 +9,7 @@ const backgroundImages = {
     Demon: 'images/backgrounds/demon.png',
     Basilisk: 'images/backgrounds/basilisk.png',
     Magician: 'images/backgrounds/magician.png',
+    Boss: 'images/backgrounds/boss.png',
     default: 'images/backgrounds/default.png'
 };
 
@@ -64,7 +65,8 @@ const portraits = {
     Zombie: '🧟',
     Ghoul: '👻',
     Demon: '👹',
-    Basilisk: '🐍'
+    Basilisk: '🐍',
+    Boss: '🐉'
 };
 
 function updateActor(actor, target) {
@@ -109,10 +111,11 @@ function drawActor(actor) {
     if (actor.deathComplete) return;
     ctx.save();
     ctx.globalAlpha = 1.0;
+    const bossScale = actor.isBoss ? 1.6 : 1.0;
     // Death Animation
     let shadowAlpha = 0.5;
     let spriteAlpha = 1.0;
-    let scale = 1.0;
+    let scale = bossScale;
     let rotation = 0;
     let yOffset = 0;
 
@@ -123,7 +126,7 @@ function drawActor(actor) {
         let progress = Math.min(1, actor.deathTimer / 45);
         shadowAlpha = 0.5 * (1 - progress)
         spriteAlpha = 1 - progress;
-        scale = 1 - progress;
+        scale = bossScale * (1 - progress);
         rotation = progress * Math.PI * 1.5;
         yOffset = progress * 40;
 
@@ -177,7 +180,7 @@ function drawActor(actor) {
     ctx.fillText(actor.name || '???', 0, 50);
     // Inventory Potions
     if (actor.potions > 0) {
-        ctx.fillStyle = '#d8b4fe'
+        ctx.fillStyle = '#a0d094'
         ctx.font = 'bold 11px monospace';
         ctx.fillText(`🧪 x${actor.potions}`, 0, 68);
     }

@@ -314,7 +314,9 @@ async function handleEnemyDefeat(){
         document.getElementById('choiceButtons').style.display = 'block';
     } else {
         await writeSlowly(`All enemies have been defeated! Congratulations, ${player.name}, you win!`);
-        toggleButtons(true);
+        document.getElementById('attackButton').style.display = 'none';
+        document.getElementById('defendButton').style.display = 'none';
+        document.getElementById('healButton').style.display = 'none';
         document.getElementById('playAgainButton').style.display = 'inline-block';
     }
 }

@@ -2,13 +2,68 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const damagePopUps = [];
 
+// Background Image
+const backgroundImages = {
+    Zombie: 'images/backgrounds/zombie.png',
+    Ghoul: 'images/backgrounds/ghoul.png',
+    Demon: 'images/backgrounds/demon.png',
+    Basilisk: 'images/backgrounds/basilisk.png',
+    Magician: 'images/backgrounds/magician.png',
+    default: 'images/backgrounds/default.png'
+};
+
+const loadedBackgrounds = {};
+for (const key in backgroundImages) {
+    const img = new Image();
+    img.loaded = false;
+    img.onload = () => { img.loaded = true; };
+    img.onerror = () => { console.error(`Background failed to load for "${key}": ${backgroundImages[key]}`); };
+    img.src = backgroundImages[key];
+    loadedBackgrounds[key] = img;
+}
+
+// Crossfade Transition
+let activeBgKey = 'default';
+let previousBgImage = null;
+let transitionStart = 0;
+const transitionDuration = 700;
+
+function getCurrentBgKey() {
+    if (typeof currentEnemy !== 'undefined' && currentEnemy && loadedBackgrounds[currentEnemy.charClass]) {
+        return currentEnemy.charClass;
+    }
+    return 'default';
+}
+// Computes the source/dest rects for a "cover" fit + sway, then draws with the given alpha
+function drawBackgroundImage(img, swayX, swayY, alpha) {
+    if (!img || !img.loaded) return;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(swayX, swayY);
+ 
+    const targetW = canvas.width;
+    const targetH = canvas.height;
+    const coverScale = Math.max(targetW / img.width, targetH / img.height);
+    const sWidth = targetW / coverScale;
+    const sHeight = targetH / coverScale;
+    const sx = (img.width - sWidth) / 2;
+    const sy = (img.height - sHeight) / 2;
+    const swayScale = 1.06;
+    const drawW = targetW * swayScale;
+    const drawH = targetH * swayScale;
+    const offsetX = (targetW - drawW) / 2;
+    const offsetY = (targetH - drawH) / 2;
+ 
+    ctx.drawImage(img, sx, sy, sWidth, sHeight, offsetX, offsetY, drawW, drawH);
+    ctx.restore();
+}
 const portraits = {
     Knight: '🗡️',
     Magician: '🧙🏼‍♂️',
     Archer: '🏹',
     Zombie: '🧟',
     Ghoul: '👻',
-    Mimic: '📦',
+    Demon: '👹',
     Basilisk: '🐍'
 };
 
@@ -148,36 +203,35 @@ function drawActor(actor) {
 
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Background
-    const skyGradient = ctx.createLinearGradient(0, 0, 0, 310);
-    skyGradient.addColorStop(0, '#0f172a');
-    skyGradient.addColorStop(0.6, '#1e1b4b');
-    skyGradient.addColorStop(1, '#4c1d95');
-    ctx.fillStyle = skyGradient;
-    ctx.fillRect(0, 0, canvas.width, 310);
-    // Stars
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-    const stars = [[120, 50], [240, 80], [380, 40], [520, 90], [680, 60]];
-    stars.forEach(star => {
-        ctx.beginPath();
-        ctx.arc(star[0], star[1], 2, 0, Math.PI * 2);
-        ctx.fill();
-        });
-    // Mountains
-    ctx.fillStyle = '#110c22';
-    ctx.beginPath();
-    ctx.moveTo(0, 310);
-    ctx.lineTo(150, 240);
-    ctx.lineTo(300, 310);
-    ctx.lineTo(450, 220);
-    ctx.lineTo(600, 310);
-    ctx.lineTo(720, 260);
-    ctx.lineTo(800, 310);
-    ctx.closePath();
-    ctx.fill();
-    // Arena Floor
-    ctx.fillStyle = '#11131970';
-    ctx.fillRect(0, 310, canvas.width, canvas.height - 310);
+    // Background Sway
+    const now = Date.now();
+    const swayX = Math.sin(now / 4000) * 8;
+    const swayY = Math.cos(now / 5000) * 4;
+    // Detect enemy/background change and kick off a crossfade
+    const newBgKey = getCurrentBgKey();
+    if (newBgKey !== activeBgKey) {
+        previousBgImage = loadedBackgrounds[activeBgKey] || null;
+        activeBgKey = newBgKey;
+        transitionStart = now;
+    }
+
+    const currentBgImage = loadedBackgrounds[activeBgKey];
+    const elapsedSinceSwitch = now - transitionStart;
+    const inTransition = previousBgImage && elapsedSinceSwitch < transitionDuration;
+
+    if (inTransition) {
+        const progress = Math.min(1, elapsedSinceSwitch / transitionDuration);
+        drawBackgroundImage(previousBgImage, swayX, swayY, 1);       // old bg fully visible underneath
+        drawBackgroundImage(currentBgImage, swayX, swayY, progress); // new bg fades in on top
+    } else if (currentBgImage && currentBgImage.loaded) {
+        drawBackgroundImage(currentBgImage, swayX, swayY, 1);
+    } else {
+        ctx.save();
+        ctx.translate(swayX, swayY);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(-20, -20, canvas.width + 40, canvas.height + 40);
+        ctx.restore();
+    }
 
     if (typeof player !== 'undefined' && player.health > 0) {
         updateActor(player, currentEnemy);

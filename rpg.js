@@ -169,7 +169,7 @@ const enemyLibrary = [
     {name: 'Magician', healthRange: [40,48], attackRange: [14, 20], charClass: 'Magician', potions: 5},
     {name: 'Zombie', healthRange: [32,40], attackRange: [6, 12], charClass: 'Zombie', potions: 0},
     {name: 'Ghoul', healthRange: [24,48], attackRange: [6, 14], charClass: 'Ghoul', potions: 3},
-    {name: 'Mimic', healthRange: [38,48], attackRange: [10, 22], charClass: 'Mimic', potions: 1},
+    {name: 'Demon', healthRange: [38,48], attackRange: [10, 22], charClass: 'Demon', potions: 1},
     {name: 'Basilisk', healthRange: [40,48], attackRange: [12, 20], charClass: 'Basilisk', potions: 2},
 ];
 

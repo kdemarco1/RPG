@@ -111,7 +111,7 @@ function drawActor(actor) {
     if (actor.deathComplete) return;
     ctx.save();
     ctx.globalAlpha = 1.0;
-    const bossScale = actor.isBoss ? 1.6 : 1.0;
+    const bossScale = actor.isBoss ? 2.3 : 1.0;
     // Death Animation
     let shadowAlpha = 0.5;
     let spriteAlpha = 1.0;
@@ -186,10 +186,10 @@ function drawActor(actor) {
     }
     // Dynamic Health Bar
     const hpPercent = actor.maxHealth > 0 ? Math.max(0, actor.health / actor.maxHealth) : 0;
-    const barWidth = 70;
-    const barHeight = 6;
+    const barWidth = actor.isBoss ? 130 : 70;
+    const barHeight = actor.isBoss ? 11 : 6;
     const barX = 0 - barWidth / 2;
-    const barY = 0 - 55;
+    const barY = actor.isBoss ? -62 : -55;
     //
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(barX, barY, barWidth, barHeight);
@@ -197,8 +197,8 @@ function drawActor(actor) {
     ctx.fillStyle = hpPercent < 0.3 ? '#e74c3c' : '#2ecc71';
     ctx.fillRect(barX, barY, barWidth * hpPercent, barHeight);
     // Border Outline
-    ctx.strokeStyle = '#7f8c8d';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = actor.isBoss ? '#ffd700' : '#7f8c8d';
+    ctx.lineWidth = actor.isBoss ? 2 : 1;
     ctx.strokeRect(barX, barY, barWidth, barHeight);
     }
     ctx.restore();

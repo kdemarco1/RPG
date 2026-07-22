@@ -111,7 +111,7 @@ function resetClassSelectionUI() {
 // Character Class
 
 class Character {
-    constructor(name, health, attackRange, charClass, potions = 0) {
+    constructor(name, health, attackRange, charClass, potions = 0, baseX = 580, baseY = 280) {
         this.name = name;
         this.health = health;
         this.maxHealth = health;
@@ -119,10 +119,10 @@ class Character {
         this.charClass = charClass;
         this.potions = potions;
         this.isDefending = false;
-        this.x = 0;
-        this.y = 0;
-        this.baseX = 0;
-        this.baseY = 0;
+        this.x = baseX;
+        this.y = baseY;
+        this.baseX = baseX;
+        this.baseY = baseY;
         this.visualState = 'idle';
         this.stateTimer = 0;
     }
@@ -264,8 +264,8 @@ beginAdventureButton.addEventListener('click', startGame);
 async function startGame() {
     startScreen.style.display = 'none';
     battleScreen.style.display = 'block';
-    player.baseX = 150;
-    player.baseY = 250;
+    player.baseX = 220;
+    player.baseY = 180;
     player.x = player.baseX;
     player.y = player.baseY;
     await writeSlowly(`${player.name} the ${player.charClass} begins their adventure!`);

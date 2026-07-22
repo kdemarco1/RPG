@@ -28,7 +28,6 @@ const GAME_CONFIG = {
         healthBarWidth: 70,
         healthBarHeight: 6,
         healthBarOffset: 15,
-        spriteHeight: 64
     },
 
     popup: {

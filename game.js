@@ -52,14 +52,35 @@ const portraits = {
         idle: 'images/sprites/knight/Idle.png',
         attacking: 'images/sprites/knight/Run+Attack.png',
         hurt: 'images/sprites/knight/Hurt.png',
-        defending: 'images/sprites/knight/Defend.png'
+        defending: 'images/sprites/knight/Defend.png',
+        dead: 'images/sprites/knight/Dead.png'
     },
-    Magician: '🧙🏼‍♂️',
+    Magician: {
+        idle: 'images/sprites/magician/Idle.png',
+        attacking: 'images/sprites/magician/Attack.png',
+        hurt: 'images/sprites/magician/Hurt.png',
+        dead: 'images/sprites/magician/Dead.png'
+    },
     Archer: '🏹',
     Zombie: '🧟',
-    Ghoul: '👻',
-    Demon: '👹',
-    Basilisk: '🐍',
+    Minotaur: {
+        idle: 'images/sprites/minotaur/Idle.png',
+        attacking: 'images/sprites/minotaur/Attack.png',
+        hurt: 'images/sprites/minotaur/Hurt.png',
+        dead: 'images/sprites/minotaur/Dead.png'
+    },
+    Werewolf: {
+        idle: 'images/sprites/werewolf/Idle.png',
+        attacking: 'images/sprites/werewolf/Attack.png',
+        hurt: 'images/sprites/werewolf/Hurt.png',
+        dead: 'images/sprites/werewolf/Dead.png'
+    },
+    Skeleton: {
+        idle: 'images/sprites/skeleton/Idle.png',
+        attacking: 'images/sprites/skeleton/Attack.png',
+        hurt: 'images/sprites/skeleton/Hurt.png',
+        dead: 'images/sprites/skeleton/Dead.png'
+    },
     Boss: '🐉'
 };
 
@@ -348,13 +369,39 @@ function drawHealthBar(actor, hpPercent, yOffset) {
 
     const x = -width / 2;
 
-    const y = -GAME_CONFIG.ui.spriteHeight - GAME_CONFIG.ui.healthBarOffset;
+    let spriteHeight = 64;
+
+    const charSprites = loadedSprites[actor.charClass];
+
+    if (charSprites && charSprites[actor.currentAnim]) {
+
+        const sprite = charSprites[actor.currentAnim];
+
+        if (sprite && sprite.loaded) {
+
+            spriteHeight = sprite.height * 2;
+
+        }
+    }
+
+    // place above the sprite
+    const y = -(spriteHeight / 2) - 15;
+
 
     ctx.fillStyle = "#1a1a1a";
-    ctx.fillRect(x, y, width, height);
+    ctx.fillRect(
+        x,
+        y,
+        width,
+        height
+    );
+
 
     ctx.fillStyle =
-        hpPercent < 0.3 ? "#e74c3c" : "#2ecc71";
+        hpPercent < 0.3
+        ? "#e74c3c"
+        : "#2ecc71";
+
 
     ctx.fillRect(
         x,
@@ -362,6 +409,7 @@ function drawHealthBar(actor, hpPercent, yOffset) {
         width * hpPercent,
         height
     );
+
 
     ctx.strokeStyle = "#7f8c8d";
 
@@ -372,8 +420,8 @@ function drawHealthBar(actor, hpPercent, yOffset) {
         height
     );
 
-    ctx.restore();
 
+    ctx.restore();
 }
 
 function drawActorName(actor, yOffset) {

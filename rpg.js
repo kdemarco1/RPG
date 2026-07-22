@@ -167,9 +167,9 @@ let player = new Character('', 0, [0, 0], '', 0);
 const enemyLibrary = [
     {name: 'Magician', healthRange: [40,48], attackRange: [14, 20], charClass: 'Magician', potions: 5},
     {name: 'Zombie', healthRange: [32,40], attackRange: [6, 12], charClass: 'Zombie', potions: 0},
-    {name: 'Ghoul', healthRange: [24,48], attackRange: [6, 14], charClass: 'Ghoul', potions: 3},
-    {name: 'Demon', healthRange: [38,48], attackRange: [10, 22], charClass: 'Demon', potions: 1},
-    {name: 'Basilisk', healthRange: [40,48], attackRange: [12, 20], charClass: 'Basilisk', potions: 2},
+    {name: 'Minotaur', healthRange: [24,48], attackRange: [6, 14], charClass: 'Minotaur', potions: 3},
+    {name: 'Werewolf', healthRange: [38,48], attackRange: [10, 22], charClass: 'Werewolf', potions: 1},
+    {name: 'Skeleton', healthRange: [40,48], attackRange: [12, 20], charClass: 'Skeleton', potions: 2},
 ];
 
 const bossTemplate = {

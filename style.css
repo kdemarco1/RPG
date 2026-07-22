@@ -29,7 +29,9 @@ canvas#gameCanvas {
     display: block;
     margin: 15px auto;
     border-radius: 8px;
-    box-shadow: 0 0 15px rgga(76, 29, 149, 0.5);
+    box-shadow: 0 0 15px rgba(76, 29, 149, 0.5);
+    background-color: #1b2631;
+    display: block;
 }
 
 h1 {
@@ -157,7 +159,32 @@ button:hover {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
 }
 
-#gameCanvas {
-    background-color: #1b2631;
-    display: block;
+body::before {
+    content: "";
+    position: fixed;
+    inset: -6%; /* oversized so the sway never reveals an edge */
+    background-image: url('images/backgrounds/default.png');
+    background-size: cover;
+    background-position: center;
+    z-index: -2;
+    animation: startBgDrift 16s ease-in-out infinite;
 }
+ 
+/* Darken/tint overlay so text and buttons stay readable over the art */
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(21,21,21,0.55) 0%, rgba(21,21,21,0.75) 100%);
+    z-index: -1;
+}
+ 
+/* Slow side-to-side + up-down drift */
+@keyframes startBgDrift {
+    0%   { transform: scale(1.04) translate(0px, 0px); }
+    25%  { transform: scale(1.04) translate(-10px, 6px); }
+    50%  { transform: scale(1.04) translate(8px, -6px); }
+    75%  { transform: scale(1.04) translate(-5px, -4px); }
+    100% { transform: scale(1.04) translate(0px, 0px); }
+}
+ 

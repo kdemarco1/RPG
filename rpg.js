@@ -36,7 +36,6 @@ async function writeSlowly(text, delayMultiplier = text_delay_multiplier) {
 }
 
 // Class Selection
-
 const class_info = {
     Knight: {
         portrait: '🗡️',
@@ -169,14 +168,27 @@ const enemyLibrary = [
     {name: 'Magician', healthRange: [40,48], attackRange: [14, 20], charClass: 'Magician', potions: 5},
     {name: 'Zombie', healthRange: [32,40], attackRange: [6, 12], charClass: 'Zombie', potions: 0},
     {name: 'Ghoul', healthRange: [24,48], attackRange: [6, 14], charClass: 'Ghoul', potions: 3},
-    {name: 'Mimic', healthRange: [38,48], attackRange: [10, 22], charClass: 'Mimic', potions: 1},
+    {name: 'Demon', healthRange: [38,48], attackRange: [10, 22], charClass: 'Demon', potions: 1},
     {name: 'Basilisk', healthRange: [40,48], attackRange: [12, 20], charClass: 'Basilisk', potions: 2},
 ];
 
+const bossTemplate = {
+    name: 'Ignis, The Beacon of False Hope',
+    healthRange: [140, 170],
+    attackRange: [22, 34],
+    charClass: 'Boss',
+    potions: 2
+};
+
+function spawnBoss() {
+    const health = getRandomInt(bossTemplate.healthRange[0], bossTemplate.healthRange[1]);
+    return new Character(bossTemplate.name, health, bossTemplate.attackRange, bossTemplate.charClass, bossTemplate.potions, true);
+}
+
 const playerConfigs = {
-    Knight: {healthRange: [55,75], attackRange: [8, 13], potions: 3},
-    Magician: {healthRange: [50, 70], attackRange: [12, 20], potions: 5},
-    Archer: {healthRange: [70, 80], attackRange: [6, 12], potions: 2}
+    Knight: {healthRange: [55,75], attackRange: [16, 26], potions: 3},
+    Magician: {healthRange: [50, 70], attackRange: [20, 30], potions: 5},
+    Archer: {healthRange: [70, 80], attackRange: [14, 22], potions: 2}
 };
 
 function initPlayer(name, charClass) {

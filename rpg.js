@@ -324,8 +324,17 @@ async function handleEnemyDefeat(){
         await writeSlowly(`Will you challenge the next foe or flee?`);
         showActionButtons(false);
         document.getElementById('choiceButtons').style.display = 'block';
+    } else if (enemiesDefeated === max_enemies) {
+        const config = playerConfigs[player.charClass];
+        player.potions = config.potions;
+        updateBattleUI();
+        await writeSlowly(`Your potions have been fully restored...`);
+        await writeSlowly(`The ground shakes... a BOSS APPEARS!`);
+        showActionButtons(true);
+        await sleep(next_foe_delay);
+        startEncounter(spawnBoss());
     } else {
-        await writeSlowly(`All enemies have been defeated! Congratulations, ${player.name}, you win!`);
+        await writeSlowly(`The ${currentEnemy.name} has fallen! You are victorious, ${player.name}!`);
         document.getElementById('attackButton').style.display = 'none';
         document.getElementById('defendButton').style.display = 'none';
         document.getElementById('healButton').style.display = 'none';

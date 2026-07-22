@@ -23,6 +23,26 @@ for (const key in backgroundImages) {
         `Background failed to load for "${key}"`
     );
 
+for (const key in backgroundImages) {
+    const img = new Image();
+    img.loaded = false;
+    img.onload = () => { img.loaded = true; };
+    img.onerror = () => { console.error(`Background failed to load for "${key}": ${backgroundImages[key]}`); };
+    img.src = backgroundImages[key];
+    loadedBackgrounds[key] = img;
+}
+
+// Crossfade Transition
+let activeBgKey = 'default';
+let previousBgImage = null;
+let transitionStart = 0;
+const transitionDuration = 700;
+
+function getCurrentBgKey() {
+    if (typeof currentEnemy !== 'undefined' && currentEnemy && loadedBackgrounds[currentEnemy.charClass]) {
+        return currentEnemy.charClass;
+    }
+    return 'default';
 }
 // Computes the source/dest rects for a "cover" fit + sway, then draws with the given alpha
 function drawBackgroundImage(img, swayX, swayY, alpha) {
@@ -248,10 +268,26 @@ function updateActor(actor, target) {
     updateDamageEffects(actor);
     updateMovement(actor, target);
 }
+    if (actor.deathComplete) return;
+    ctx.save();
+    ctx.globalAlpha = 1.0;
+    const bossScale = actor.isBoss ? 1.6 : 1.0;
+    // Death Animation
+    let shadowAlpha = 0.5;
+    let spriteAlpha = 1.0;
+    let scale = bossScale;
+    let rotation = 0;
+    let yOffset = 0;
 
 function drawSprite(actor, spriteAlpha, scale, rotation, yOffset) {
 
     ctx.save();
+        let progress = Math.min(1, actor.deathTimer / 45);
+        shadowAlpha = 0.5 * (1 - progress)
+        spriteAlpha = 1 - progress;
+        scale = bossScale * (1 - progress);
+        rotation = progress * Math.PI * 1.5;
+        yOffset = progress * 40;
 
     ctx.translate(actor.x, actor.y + yOffset);
 
@@ -296,6 +332,57 @@ function drawSprite(actor, spriteAlpha, scale, rotation, yOffset) {
 
         }
 
+    // Non-Transparent background for emoji
+    const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, 25);
+    halo.addColorStop(0, '#110c22');
+    halo.addColorStop(0.6, '#110c22')
+    halo.addColorStop(1, 'rgba(17, 12, 34, 0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(0, 0, 25, 0, Math.PI * 2);
+    ctx.fill();
+    // Sprite
+    ctx.font = '64px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff';
+    const emoji = portraits[actor.charClass];
+    let xNudge = 0;
+    let yNudge = 0;
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (actor === player && isMobile) {
+        xNudge = -4;
+    }
+    ctx.fillText(emoji, xNudge, yNudge);
+    ctx.fillText(emoji, xNudge, yNudge);
+    ctx.shadowBlur = 0;
+    // Name Text
+    if (actor.health > 0) {
+    ctx.fillStyle = '#ecf0f1'
+    ctx.font = 'bold 14px monospace';
+    ctx.fillText(actor.name || '???', 0, 50);
+    // Inventory Potions
+    if (actor.potions > 0) {
+        ctx.fillStyle = '#a0d094'
+        ctx.font = 'bold 11px monospace';
+        ctx.fillText(`🧪 x${actor.potions}`, 0, 68);
+    }
+    // Dynamic Health Bar
+    const hpPercent = actor.maxHealth > 0 ? Math.max(0, actor.health / actor.maxHealth) : 0;
+    const barWidth = 70;
+    const barHeight = 6;
+    const barX = 0 - barWidth / 2;
+    const barY = 0 - 55;
+    //
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+    // Health color change
+    ctx.fillStyle = hpPercent < 0.3 ? '#e74c3c' : '#2ecc71';
+    ctx.fillRect(barX, barY, barWidth * hpPercent, barHeight);
+    // Border Outline
+    ctx.strokeStyle = '#7f8c8d';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(barX, barY, barWidth, barHeight);
     }
 
     const portrait = portraits[actor.charClass];
@@ -466,6 +553,36 @@ function gameLoop() {
     const now = performance.now();
     BackgroundManager.update(now);
     BackgroundManager.draw(now);
+    // Background Sway
+    const now = Date.now();
+    const swayX = Math.sin(now / 4000) * 8;
+    const swayY = Math.cos(now / 5000) * 4;
+    // Detect enemy/background change and kick off a crossfade
+    const newBgKey = getCurrentBgKey();
+    if (newBgKey !== activeBgKey) {
+        previousBgImage = loadedBackgrounds[activeBgKey] || null;
+        activeBgKey = newBgKey;
+        transitionStart = now;
+    }
+
+    const currentBgImage = loadedBackgrounds[activeBgKey];
+    const elapsedSinceSwitch = now - transitionStart;
+    const inTransition = previousBgImage && elapsedSinceSwitch < transitionDuration;
+
+    if (inTransition) {
+        const progress = Math.min(1, elapsedSinceSwitch / transitionDuration);
+        drawBackgroundImage(previousBgImage, swayX, swayY, 1);       // old bg fully visible underneath
+        drawBackgroundImage(currentBgImage, swayX, swayY, progress); // new bg fades in on top
+    } else if (currentBgImage && currentBgImage.loaded) {
+        drawBackgroundImage(currentBgImage, swayX, swayY, 1);
+    } else {
+        ctx.save();
+        ctx.translate(swayX, swayY);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(-20, -20, canvas.width + 40, canvas.height + 40);
+        ctx.restore();
+    }
+
     if (typeof player !== 'undefined' && player.health > 0) {
         updateActor(player, currentEnemy);
     }

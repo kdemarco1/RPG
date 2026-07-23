@@ -120,7 +120,7 @@ window.animConfig = {
     },
     Gorgon: {
         idle: { frames: 7, speed: 20 },
-        attacking: { frames: 7, speed: 20 },
+        attacking: { frames: 7, speed: 10 },
         hurt: { frames: 3, speed: 50 },
         dead: { frames: 3, speed: 50 }
     }

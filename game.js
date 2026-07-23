@@ -13,7 +13,9 @@ function updateAnimation(actor) {
     // Determine animation state
     if (actor.visualState === "attacking")
         targetAnim = "attacking";
-    else if (actor.visualState === "hurt" || actor.health <= 0)
+    else if (actor.health <= 0)
+        targetAnim = "hurt";
+    else if (actor.visualState === "hurt")
         targetAnim = "hurt";
     else if (actor.visualState === "defending" || actor.isDefending)
         targetAnim = "defending";
@@ -51,6 +53,17 @@ function updateState(actor) {
             actor.visualState = "idle";
         }
     }
+
+    if (actor.visualState === "dead") {
+        if (typeof actor.deathTimer !== "number") {
+            actor.deathTimer = 0;
+        }
+        actor.deathTimer += 1;
+
+        if (actor.deathTimer >= 45) {
+            actor.deathComplete = true;
+        }
+    }
 }
 
 function updateDamageEffects(actor) {
@@ -65,6 +78,9 @@ function updateDamageEffects(actor) {
 function updateMovement(actor, target) {
     if (actor.visualState === "attacking" && target) {
         actor.x = actor.baseX + (target.baseX - actor.baseX) * GAME_CONFIG.actor.lungeFactor;
+    } else if (actor.visualState === "dead") {
+        actor.x = actor.baseX;
+        actor.y = actor.baseY + Math.min(actor.deathTimer || 0, 40);
     } else if (actor.visualState === "hurt") {
         actor.x = actor.baseX + (Math.random() - 0.5) * GAME_CONFIG.actor.shakeIntensity;
         actor.y = actor.baseY;
@@ -150,102 +166,75 @@ function drawSprite(actor, spriteAlpha, scale, rotation, yOffset) {
 
 }
 
+function getSpriteHeight(actor) {
+    const sprite = loadedSprites[actor.charClass]?.[actor.currentAnim] || loadedSprites[actor.charClass]?.idle;
+    const visualScale = actor.isBoss ? GAME_CONFIG.actor.bossScale : 1;
+    return sprite ? sprite.height * 2 * visualScale : 80;
+}
+
 function drawHealthBar(actor, hpPercent, yOffset) {
 
     const width = GAME_CONFIG.ui.healthBarWidth;
     const height = GAME_CONFIG.ui.healthBarHeight;
 
     ctx.save();
-
     ctx.translate(actor.x, actor.y + yOffset);
 
-    const sprite = loadedSprites[actor.charClass]?.[actor.currentAnim] || loadedSprites[actor.charClass]?.idle;
-    const visualScale = actor.isBoss ? GAME_CONFIG.actor.bossScale : 1;
-    const spriteHeight = sprite ? sprite.height * 2 * visualScale : 80;
+    const spriteHeight = getSpriteHeight(actor);
     const x = -width / 2 - 6;
-    const y = -(spriteHeight - 50);
+    const y = -(spriteHeight + 8);
 
     ctx.fillStyle = "#1a1a1a";
-    ctx.fillRect(
-        x,
-        y,
-        width,
-        height
-    );
+    ctx.fillRect(x, y, width, height);
 
-
-    ctx.fillStyle =
-        hpPercent < 0.3
-        ? "#e74c3c"
-        : "#2ecc71";
-
-
-    ctx.fillRect(
-        x,
-        y,
-        width * hpPercent,
-        height
-    );
-
+    ctx.fillStyle = hpPercent < 0.3 ? "#e74c3c" : "#2ecc71";
+    ctx.fillRect(x, y, width * hpPercent, height);
 
     ctx.strokeStyle = "#7f8c8d";
-
-    ctx.strokeRect(
-        x,
-        y,
-        width,
-        height
-    );
-
+    ctx.strokeRect(x, y, width, height);
 
     ctx.restore();
 }
 
 function drawActorName(actor, yOffset) {
-
     ctx.save();
-
     ctx.translate(actor.x, actor.y + yOffset);
 
     ctx.fillStyle = "#ecf0f1";
-
     ctx.font = "bold 14px monospace";
-
     ctx.textAlign = "center";
+    ctx.strokeStyle = "#111111";
+    ctx.lineWidth = 4;
 
-    ctx.fillText(
-        actor.name || "???",
-        0,
-        22
-    );
+    const labelY = 20;
+
+    ctx.strokeText(actor.name || "???", 0, labelY);
+    ctx.fillText(actor.name || "???", 0, labelY);
 
     ctx.restore();
-
 }
 
 function drawPotionCount(actor, yOffset) {
-
-    if (actor.potions <= 0)
-        return;
+    if (actor.potions <= 0) return;
 
     ctx.save();
-
     ctx.translate(actor.x, actor.y + yOffset);
 
     ctx.fillStyle = "#a0d094";
-
     ctx.font = "bold 11px monospace";
-
     ctx.textAlign = "center";
+    ctx.strokeStyle = "#111111";
+    ctx.lineWidth = 3;
 
-    ctx.fillText(
-        `🧪 x${actor.potions}`,
-        0,
-        38
-    );
+    const spriteHeight = getSpriteHeight(actor);
+    const barTopY = -(spriteHeight + 8);
+    const nameY = barTopY - 14;
+    const labelY = nameY - 16;             // sit just above the name
+
+    ctx.strokeText(`🧪 x${actor.potions}`, 0, labelY);
+    ctx.fillText(`🧪 x${actor.potions}`, 0, labelY);
 
     ctx.restore();
-
 }
 
 function drawActor(actor) {
@@ -273,6 +262,14 @@ function drawActor(actor) {
         hpPercent,
         yOffset
     );
+    drawPotionCount(
+        actor,
+        yOffset
+    );
+    drawActorName(
+        actor,
+        yOffset
+    );
 }
 
 function gameLoop() {
@@ -281,10 +278,10 @@ function gameLoop() {
     BackgroundManager.update(now);
     BackgroundManager.draw(now);
 
-    if (typeof player !== 'undefined' && player.health > 0) {
+    if (typeof player !== 'undefined' && !player.deathComplete) {
         updateActor(player, currentEnemy);
     }
-    if (typeof currentEnemy !== 'undefined' && currentEnemy.health > 0) {
+    if (typeof currentEnemy !== 'undefined' && !currentEnemy.deathComplete) {
         updateActor(currentEnemy, player);
     }
     if (typeof player !== 'undefined' && !player.deathComplete) {

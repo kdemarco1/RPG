@@ -155,6 +155,8 @@ class Character {
 
         if (this.health <= 0) {
             this.visualState = 'dead';
+            this.deathTimer = 0;
+            this.deathComplete = false;
         } else {
             this.visualState = 'hurt';
             this.stateTimer = 20;

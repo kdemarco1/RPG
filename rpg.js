@@ -111,7 +111,7 @@ function resetClassSelectionUI() {
 // Character Class
 
 class Character {
-    constructor(name, health, attackRange, charClass, potions = 0, baseX = 580, baseY = 280) {
+    constructor(name, health, attackRange, charClass, potions = 0, baseX = 0, baseY = 0) {
         this.name = name;
         this.health = health;
         this.maxHealth = health;
@@ -123,6 +123,7 @@ class Character {
         this.y = baseY;
         this.baseX = baseX;
         this.baseY = baseY;
+        this.isEnemy = false;
         this.visualState = 'idle';
         this.stateTimer = 0;
     }
@@ -166,7 +167,7 @@ let player = new Character('', 0, [0, 0], '', 0);
 
 const enemyLibrary = [
     {name: 'Magician', healthRange: [40,48], attackRange: [14, 20], charClass: 'Magician', potions: 5},
-    {name: 'Zombie', healthRange: [32,40], attackRange: [6, 12], charClass: 'Zombie', potions: 0},
+    {name: 'Gorgon', healthRange: [32,40], attackRange: [6, 12], charClass: 'Gorgon', potions: 0},
     {name: 'Minotaur', healthRange: [24,48], attackRange: [6, 14], charClass: 'Minotaur', potions: 3},
     {name: 'Werewolf', healthRange: [38,48], attackRange: [10, 22], charClass: 'Werewolf', potions: 1},
     {name: 'Skeleton', healthRange: [40,48], attackRange: [12, 20], charClass: 'Skeleton', potions: 2},
@@ -182,7 +183,9 @@ const bossTemplate = {
 
 function spawnBoss() {
     const health = getRandomInt(bossTemplate.healthRange[0], bossTemplate.healthRange[1]);
-    return new Character(bossTemplate.name, health, bossTemplate.attackRange, bossTemplate.charClass, bossTemplate.potions, true);
+    const boss = new Character(bossTemplate.name, health, bossTemplate.attackRange, bossTemplate.charClass, bossTemplate.potions, true);
+    boss.isEnemy = true;
+    return boss;
 }
 
 const playerConfigs = {
@@ -195,14 +198,18 @@ function initPlayer(name, charClass) {
     const config = playerConfigs[charClass];
     const hp = getRandomInt(config.healthRange[0], config.healthRange[1]);
     const finalName = name.trim();
-    return new Character(finalName, hp, config.attackRange, charClass, config.potions);
+    const playerCharacter = new Character(finalName, hp, config.attackRange, charClass, config.potions);
+    playerCharacter.isEnemy = false;
+    return playerCharacter;
 }
 
 function spawnRandomEnemy(){
     const template = enemyLibrary[Math.floor(Math.random() * enemyLibrary.length)];
     const health = getRandomInt(template.healthRange[0], template.healthRange[1]);
     const enemyPotions = template.potions;
-    return new Character(template.name, health, template.attackRange, template.charClass, template.potions);
+    const enemy = new Character(template.name, health, template.attackRange, template.charClass, template.potions);
+    enemy.isEnemy = true;
+    return enemy;
 }
 
 // Class Selection listeners
@@ -264,8 +271,8 @@ beginAdventureButton.addEventListener('click', startGame);
 async function startGame() {
     startScreen.style.display = 'none';
     battleScreen.style.display = 'block';
-    player.baseX = 220;
-    player.baseY = 180;
+    player.baseX = canvas.width * 0.24;
+    player.baseY = canvas.height - 40;
     player.x = player.baseX;
     player.y = player.baseY;
     await writeSlowly(`${player.name} the ${player.charClass} begins their adventure!`);
@@ -274,8 +281,8 @@ async function startGame() {
 
 async function startEncounter(enemy){
     currentEnemy = enemy
-    currentEnemy.baseX = 600;
-    currentEnemy.baseY = 250;
+    currentEnemy.baseX = canvas.width * 0.76;
+    currentEnemy.baseY = canvas.height - 40;
     currentEnemy.x = currentEnemy.baseX;
     currentEnemy.y = currentEnemy.baseY;
 

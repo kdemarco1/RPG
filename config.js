@@ -34,5 +34,4 @@ const GAME_CONFIG = {
         velocityY: -1.5,
         lifetime: 100
     }
-
 };

@@ -10,15 +10,24 @@ function updateAnimation(actor) {
         actor.currentAnim = "idle";
     }
     let targetAnim = "idle";
+
+    const hasDeathAnim = Boolean(
+        loadedSprites[actor.charClass]?.dead &&
+        window.animConfig?.[actor.charClass]?.dead
+    );
+
     // Determine animation state
     if (actor.visualState === "attacking")
         targetAnim = "attacking";
+    else if (actor.visualState === "dead")
+        targetAnim = hasDeathAnim ? "dead" : "hurt"; // fallback keeps the hurt pose under the swirl/fade
     else if (actor.health <= 0)
         targetAnim = "hurt";
     else if (actor.visualState === "hurt")
         targetAnim = "hurt";
     else if (actor.visualState === "defending" || actor.isDefending)
         targetAnim = "defending";
+
     // Reset frames on animation switch
     if (actor.currentAnim !== targetAnim) {
         actor.currentAnim = targetAnim;
@@ -32,7 +41,7 @@ function updateAnimation(actor) {
     // Advance frame based on animation speed
     if (actor.tickCount >= config.speed) {
         actor.tickCount = 0;
-        if (actor.currentAnim === "defending") {
+        if (actor.currentAnim === "defending" || actor.currentAnim === "dead") {
             if (actor.frameIndex < config.frames - 1)
                 actor.frameIndex++;
         } else {
@@ -108,11 +117,27 @@ function updateActor(actor, target) {
 function drawSprite(actor, spriteAlpha, scale, rotation, yOffset) {
 
     ctx.save();
-    const progress = Number.isFinite(actor.deathTimer) ? Math.min(1, actor.deathTimer / 45) : 0;
-    spriteAlpha = 1 - progress;
-    scale *= (1 - progress);
-    rotation = progress * Math.PI * 1.5;
-    yOffset = progress * 40;
+
+    const hasDeathAnim = Boolean(
+        loadedSprites[actor.charClass]?.dead &&
+        window.animConfig?.[actor.charClass]?.dead
+    );
+
+    if (actor.visualState === "dead" && !hasDeathAnim) {
+        // Fallback: swirl, shrink, and fade away
+        const progress = Number.isFinite(actor.deathTimer) ? Math.min(1, actor.deathTimer / 45) : 0;
+        spriteAlpha = 1 - progress;
+        scale *= (1 - progress);
+        rotation = progress * Math.PI * 1.5;
+        yOffset = progress * 40;
+    } else if (actor.visualState === "dead" && hasDeathAnim) {
+        // Real death animation: play frames normally, just fade near the very end
+        const fadeStart = 35;
+        if (actor.deathTimer >= fadeStart) {
+            const fadeProgress = (actor.deathTimer - fadeStart) / (GAME_CONFIG.actor.deathTime - fadeStart);
+            spriteAlpha = 1 - Math.min(1, fadeProgress);
+        }
+    }
 
     ctx.translate(actor.x, actor.y + yOffset);
 

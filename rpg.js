@@ -4,7 +4,7 @@
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const enemy_attack_delay = 1000;
 const next_foe_delay= 1800;
-const text_delay_multiplier = 40;
+const text_delay_multiplier = 15;
 const max_text_delay = 4000;
 const max_enemies = 3;
 const character_lift = 40;
@@ -98,8 +98,8 @@ function resetClassSelectionUI() {
 
     document.getElementById('portrait').style.display = '';
     document.getElementById('portrait').textContent = '';
-    document.getElementById('selectedTitle').textContent = '';
-    document.getElementById('classDescription').textContent = '';
+    document.getElementById('selectedTitle').textContent = 'Choose a Class';
+    document.getElementById('classDescription').textContent = 'Each character will have different health and attack power';
     document.getElementById('classStats').innerHTML = '';
 
     confirmClassButton.style.display = 'none';
@@ -108,7 +108,6 @@ function resetClassSelectionUI() {
     selectedClass = '';
     classConfirmed = false;
 }
-
 // Character Class
 
 class Character {
@@ -136,7 +135,9 @@ class Character {
     async attack(target) {
         let currentDamage = this.attackLevel;
         this.visualState = 'attacking';
-        this.stateTimer = 15;
+
+        const attackConfig = window.animConfig?.[this.charClass]?.attacking;
+        this.stateTimer = attackConfig ? attackConfig.frames * attackConfig.speed : 15;
 
         if (target.isDefending) {
             currentDamage = Math.floor(currentDamage / 2);
@@ -146,9 +147,9 @@ class Character {
         } else {
             await writeSlowly(`${this.name} attacks the ${target.name}, dealing ${currentDamage} damage.`);
         }
-        
-        await target.takeDamage(currentDamage);
-    }
+    
+    await target.takeDamage(currentDamage);
+}
 
     async takeDamage(damageValue) {
         this.health = Math.max(0, this.health - damageValue);
@@ -335,7 +336,7 @@ async function handleEnemyDefeat(){
         showActionButtons(false);
         document.getElementById('choiceButtons').style.display = 'block';
     } else {
-        await writeSlowly(`All enemies have been defeated! Congratulations, ${player.name}, you win!`);
+        await writeSlowly(`All enemies have been defeated! Congratulations ${player.name}, you win!`);
         document.getElementById('attackButton').style.display = 'none';
         document.getElementById('defendButton').style.display = 'none';
         document.getElementById('healButton').style.display = 'none';

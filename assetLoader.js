@@ -96,45 +96,50 @@ for (const charKey in portraits) {
 window.animConfig = {
     Knight: {
         idle: { frames: 4, speed: 12, visualHeight: 140, offsetX: 62 },
-        attacking: { frames: 4, speed: 80, visualHeight: 140, offsetX: 62 },
+        attacking: { frames: 4, speed: 15, visualHeight: 140, offsetX: 62 },
         hurt: { frames: 2, speed: 50, visualHeight: 140, offsetX: 62 },
-        defending: { frames: 5, speed: 50, visualHeight: 140, offsetX: 62 }
+        defending: { frames: 5, speed: 50, visualHeight: 140, offsetX: 62 },
+        dead: { frames: 6, speed: 8, visualHeight: 140, offsetX: 62 }
     },
     Magician: {
         idle: { frames: 8, speed: 12, visualHeight: 140 },
-        attacking: { frames: 7, speed: 80, visualHeight: 140 },
+        attacking: { frames: 7, speed: 15, visualHeight: 140 },
         hurt: { frames: 4, speed: 30, visualHeight: 140 },
-        defending: { frames: 8, speed: 50, visualHeight: 140 }
+        defending: { frames: 8, speed: 50, visualHeight: 140 },
+        dead: { frames: 4, speed: 11, visualHeight: 140 }
     },
     Minotaur: {
         idle: { frames: 10, speed: 16, visualHeight: 190 },
-        attacking: { frames: 5, speed: 80, visualHeight: 190 },
+        attacking: { frames: 5, speed: 15, visualHeight: 190 },
         hurt: { frames: 3, speed: 50, visualHeight: 190 },
-        defending: { frames: 4, speed: 50, visualHeight: 190 }
+        defending: { frames: 4, speed: 50, visualHeight: 190 },
+        dead: { frames: 5, speed: 9, visualHeight: 190 }
     },
     Werewolf: {
         idle: { frames: 8, speed: 12, visualHeight: 120 },
-        attacking: { frames: 6, speed: 80, visualHeight: 120 },
+        attacking: { frames: 6, speed: 15, visualHeight: 120 },
         hurt: { frames: 2, speed: 50, visualHeight: 120 },
-        defending: { frames: 4, speed: 50, visualHeight: 120 }
+        defending: { frames: 4, speed: 50, visualHeight: 120 },
+        dead: { frames: 2, speed: 22, visualHeight: 120 }
     },
     Skeleton: {
         idle: { frames: 7, speed: 20, visualHeight: 140 },
-        attacking: { frames: 4, speed: 80, visualHeight: 140 },
+        attacking: { frames: 5, speed: 15, visualHeight: 140 },
         hurt: { frames: 2, speed: 50, visualHeight: 140 },
-        defending: { frames: 4, speed: 50, visualHeight: 140 }
+        defending: { frames: 4, speed: 50, visualHeight: 140 },
+        dead: { frames: 4, speed: 11, visualHeight: 140 }
     },
     Gorgon: {
         idle: { frames: 7, speed: 20, visualHeight: 180 },
-        attacking: { frames: 7, speed: 80, visualHeight: 180 },
+        attacking: { frames: 7, speed: 15, visualHeight: 180 },
         hurt: { frames: 3, speed: 50, visualHeight: 180 },
         dead: { frames: 3, speed: 50, visualHeight: 180 }
     },
     Samurai: {
         idle: { frames: 6, speed: 20, visualHeight: 150, offsetX: 55 },
-        attacking: { frames: 4, speed: 80, visualHeight: 150, offsetX: 55 },
+        attacking: { frames: 4, speed: 15, visualHeight: 150, offsetX: 55 },
         hurt: { frames: 3, speed: 50, visualHeight: 150, offsetX: 55 },
-        dead: { frames: 3, speed: 50, visualHeight: 150, offsetX: 55 },
+        dead: { frames: 6, speed: 8, visualHeight: 150, offsetX: 55 },
         defending: { frames: 2, speed: 50, visualHeight: 150, offsetX: 55 }
     }
 };

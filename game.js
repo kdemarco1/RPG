@@ -76,8 +76,8 @@ function updateDamageEffects(actor) {
 }
 
 function updateMovement(actor, target) {
-    if (actor.visualState === "attacking") {
-        actor.x = actor.baseX;
+    if (actor.visualState === "attacking" && target) {
+        actor.x = actor.baseX + (target.baseX - actor.baseX) * GAME_CONFIG.actor.lungeFactor;
     } else if (actor.visualState === "dead") {
         actor.x = actor.baseX;
         actor.y = actor.baseY + Math.min(actor.deathTimer || 0, 40);
@@ -201,7 +201,7 @@ function drawActorName(actor, yOffset) {
     ctx.strokeStyle = "#111111";
     ctx.lineWidth = 4;
 
-    const labelX = 15;
+    const labelX = actor.isEnemy ? 15 : -7;
     const labelY = 20;
 
     ctx.strokeText(actor.name || "???", labelX, labelY);
@@ -222,7 +222,7 @@ function drawPotionCount(actor, yOffset) {
     ctx.strokeStyle = "#111111";
     ctx.lineWidth = 3;
 
-    const labelX = 15;
+    const labelX = actor.isEnemy ? 15 : -7;
     const labelY = 38;
 
     ctx.strokeText(`🧪 x${actor.potions}`, labelX, labelY);

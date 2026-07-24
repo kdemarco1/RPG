@@ -95,10 +95,10 @@ for (const charKey in portraits) {
 
 window.animConfig = {
     Knight: {
-        idle: { frames: 4, speed: 12, visualHeight: 140, offsetX: 65 },
-        attacking: { frames: 4, speed: 80, visualHeight: 140, offsetX: 65 },
-        hurt: { frames: 2, speed: 50, visualHeight: 140, offsetX: 65 },
-        defending: { frames: 5, speed: 50, visualHeight: 140, offsetX: 65 }
+        idle: { frames: 4, speed: 12, visualHeight: 140, offsetX: 62 },
+        attacking: { frames: 4, speed: 80, visualHeight: 140, offsetX: 62 },
+        hurt: { frames: 2, speed: 50, visualHeight: 140, offsetX: 62 },
+        defending: { frames: 5, speed: 50, visualHeight: 140, offsetX: 62 }
     },
     Magician: {
         idle: { frames: 8, speed: 12, visualHeight: 140 },

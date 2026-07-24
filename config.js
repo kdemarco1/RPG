@@ -9,7 +9,7 @@ const GAME_CONFIG = {
 
     animation: {
         idleSpeed: 12,
-        attackSpeed: 50,
+        attackSpeed: 20,
         hurtSpeed: 50,
         defendSpeed: 50
     },

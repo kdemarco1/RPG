@@ -145,30 +145,25 @@ function drawSprite(actor, spriteAlpha, scale, rotation, yOffset) {
 
             const drawScale = 2;
 
+            const offsetX = (config.offsetX || 0) * scale;
             const offsetY = (config.offsetY || 0) * scale;
 
-            ctx.drawImage(
-                sprite,
-                sourceX,
-                0,
-                frameWidth,
-                frameHeight,
-                -(frameWidth * drawScale) / 2,
-                -frameHeight * drawScale + offsetY,
-                frameWidth * drawScale,
-                frameHeight * drawScale
-            );
-
+            ctx.drawImage(sprite, sourceX, 0, frameWidth, frameHeight, -(frameWidth * drawScale) / 2 + offsetX, -frameHeight * drawScale + offsetY, frameWidth * drawScale, frameHeight * drawScale);
         }
     }
-
     ctx.restore();
-
 }
 
 function getSpriteHeight(actor) {
-    const sprite = loadedSprites[actor.charClass]?.[actor.currentAnim] || loadedSprites[actor.charClass]?.idle;
+    const characterConfig = window.animConfig?.[actor.charClass] || window.animConfig?.Knight;
+    const config = characterConfig?.[actor.currentAnim] || characterConfig?.idle;
     const visualScale = actor.isBoss ? GAME_CONFIG.actor.bossScale : 1;
+
+    if (config?.visualHeight) {
+        return config.visualHeight * visualScale;
+    }
+
+    const sprite = loadedSprites[actor.charClass]?.[actor.currentAnim] || loadedSprites[actor.charClass]?.idle;
     return sprite ? sprite.height * 2 * visualScale : 80;
 }
 
@@ -206,10 +201,11 @@ function drawActorName(actor, yOffset) {
     ctx.strokeStyle = "#111111";
     ctx.lineWidth = 4;
 
+    const labelX = 15;
     const labelY = 20;
 
-    ctx.strokeText(actor.name || "???", 0, labelY);
-    ctx.fillText(actor.name || "???", 0, labelY);
+    ctx.strokeText(actor.name || "???", labelX, labelY);
+    ctx.fillText(actor.name || "???", labelX, labelY);
 
     ctx.restore();
 }
@@ -226,13 +222,11 @@ function drawPotionCount(actor, yOffset) {
     ctx.strokeStyle = "#111111";
     ctx.lineWidth = 3;
 
-    const spriteHeight = getSpriteHeight(actor);
-    const barTopY = -(spriteHeight + 8);
-    const nameY = barTopY - 14;
-    const labelY = nameY - 16;             // sit just above the name
+    const labelX = 15;
+    const labelY = 38;
 
-    ctx.strokeText(`🧪 x${actor.potions}`, 0, labelY);
-    ctx.fillText(`🧪 x${actor.potions}`, 0, labelY);
+    ctx.strokeText(`🧪 x${actor.potions}`, labelX, labelY);
+    ctx.fillText(`🧪 x${actor.potions}`, labelX, labelY);
 
     ctx.restore();
 }

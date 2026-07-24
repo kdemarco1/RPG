@@ -7,6 +7,7 @@ const next_foe_delay= 1800;
 const text_delay_multiplier = 40;
 const max_text_delay = 4000;
 const max_enemies = 3;
+const character_lift = 40;
 
 // DOM References
 const startScreen = document.getElementById('startScreen');
@@ -273,8 +274,8 @@ beginAdventureButton.addEventListener('click', startGame);
 async function startGame() {
     startScreen.style.display = 'none';
     battleScreen.style.display = 'block';
-    player.baseX = canvas.width * 0.24;
-    player.baseY = canvas.height - 40;
+    player.baseX = canvas.width * 0.25;
+    player.baseY = canvas.height - 40 - character_lift;
     player.x = player.baseX;
     player.y = player.baseY;
     await writeSlowly(`${player.name} the ${player.charClass} begins their adventure!`);
@@ -284,7 +285,7 @@ async function startGame() {
 async function startEncounter(enemy){
     currentEnemy = enemy
     currentEnemy.baseX = canvas.width * 0.76;
-    currentEnemy.baseY = canvas.height - 40;
+    currentEnemy.baseY = canvas.height - 40 - character_lift;
     currentEnemy.x = currentEnemy.baseX;
     currentEnemy.y = currentEnemy.baseY;
 

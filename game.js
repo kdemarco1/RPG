@@ -1,245 +1,281 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
 const damagePopUps = [];
 
-// Background Image
-const backgroundImages = {
-    Zombie: 'images/backgrounds/zombie.png',
-    Ghoul: 'images/backgrounds/ghoul.png',
-    Demon: 'images/backgrounds/demon.png',
-    Basilisk: 'images/backgrounds/basilisk.png',
-    Magician: 'images/backgrounds/magician.png',
-    Boss: 'images/backgrounds/boss.png',
-    default: 'images/backgrounds/default.png'
-};
-
-const loadedBackgrounds = {};
-for (const key in backgroundImages) {
-    const img = new Image();
-    img.loaded = false;
-    img.onload = () => { img.loaded = true; };
-    img.onerror = () => { console.error(`Background failed to load for "${key}": ${backgroundImages[key]}`); };
-    img.src = backgroundImages[key];
-    loadedBackgrounds[key] = img;
-}
-
-// Crossfade Transition
-let activeBgKey = 'default';
-let previousBgImage = null;
-let transitionStart = 0;
-const transitionDuration = 700;
-
-function getCurrentBgKey() {
-    if (typeof currentEnemy !== 'undefined' && currentEnemy && loadedBackgrounds[currentEnemy.charClass]) {
-        return currentEnemy.charClass;
+function updateAnimation(actor) {
+    if (actor.frameIndex === undefined) {
+        actor.frameIndex = 0;
+        actor.tickCount = 0;
+        actor.currentAnim = "idle";
     }
-    return 'default';
-}
-// Computes the source/dest rects for a "cover" fit + sway, then draws with the given alpha
-function drawBackgroundImage(img, swayX, swayY, alpha) {
-    if (!img || !img.loaded) return;
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.translate(swayX, swayY);
- 
-    const targetW = canvas.width;
-    const targetH = canvas.height;
-    const coverScale = Math.max(targetW / img.width, targetH / img.height);
-    const sWidth = targetW / coverScale;
-    const sHeight = targetH / coverScale;
-    const sx = (img.width - sWidth) / 2;
-    const sy = (img.height - sHeight) / 2;
-    const swayScale = 1.06;
-    const drawW = targetW * swayScale;
-    const drawH = targetH * swayScale;
-    const offsetX = (targetW - drawW) / 2;
-    const offsetY = (targetH - drawH) / 2;
- 
-    ctx.drawImage(img, sx, sy, sWidth, sHeight, offsetX, offsetY, drawW, drawH);
-    ctx.restore();
-}
-const portraits = {
-    Knight: '🗡️',
-    Magician: '🧙🏼‍♂️',
-    Archer: '🏹',
-    Zombie: '🧟',
-    Ghoul: '👻',
-    Demon: '👹',
-    Basilisk: '🐍',
-    Boss: '🐉'
-};
-
-function updateActor(actor, target) {
-    if (!actor) return;
-
-    if (actor.pendingDamageEffect !== undefined) {
-        const isPlayer = (actor === player);
-        spawnDamagePopup(actor.baseX, actor.baseY, actor.pendingDamageEffect, isPlayer);
-        delete actor.pendingDamageEffect;
+    let targetAnim = "idle";
+    // Determine animation state
+    if (actor.visualState === "attacking")
+        targetAnim = "attacking";
+    else if (actor.health <= 0)
+        targetAnim = "hurt";
+    else if (actor.visualState === "hurt")
+        targetAnim = "hurt";
+    else if (actor.visualState === "defending" || actor.isDefending)
+        targetAnim = "defending";
+    // Reset frames on animation switch
+    if (actor.currentAnim !== targetAnim) {
+        actor.currentAnim = targetAnim;
+        actor.frameIndex = 0;
+        actor.tickCount = 0;
     }
+    const characterConfig = window.animConfig?.[actor.charClass] || window.animConfig?.Knight;
+    const config = characterConfig?.[actor.currentAnim];
+    if (!config) return
+    actor.tickCount++;
+    // Advance frame based on animation speed
+    if (actor.tickCount >= config.speed) {
+        actor.tickCount = 0;
+        if (actor.currentAnim === "defending") {
+            if (actor.frameIndex < config.frames - 1)
+                actor.frameIndex++;
+        } else {
+            actor.frameIndex =
+                (actor.frameIndex + 1) % config.frames;
+        }
+    }
+    if (!actor.isDefending && actor.currentAnim === "defending" && actor.visualState !== "defending") {
+        actor.currentAnim = "idle";
+        actor.frameIndex = 0;
+    }
+}
 
+function updateState(actor) {
     if (actor.stateTimer > 0) {
         actor.stateTimer--;
-        if (actor.stateTimer === 0 && actor.visualState !== 'dead') {
-            actor.visualState = 'idle';
+        if (actor.stateTimer === 0 && actor.visualState !== "dead") {
+            actor.visualState = "idle";
         }
     }
 
-    if (actor.visualState === 'attacking' && target) {
-        const lungeFactor = 0.4;
-        actor.x = actor.baseX + (target.baseX - actor.baseX) * lungeFactor;
-    }
-    else if (actor.visualState === 'hurt') {
-        const shakeIntensity = 8;
-        actor.x = actor.baseX + (Math.random() - 0.5) * shakeIntensity;
-        actor.y = actor.baseY;
-    }
-    else if (actor.visualState === 'dead') {
-        actor.y += (canvas.height + 100 - actor.y) * 0.1;
-    }
-    else {
-        actor.x += (actor.baseX -actor.x) * 0.2;
-        const breathingSpeed = 0.005;
-        const breathingAmplitude = 5;
-        const bob = Math.sin(Date.now() * breathingSpeed) * breathingAmplitude;
-        actor.y += (actor.baseY + bob - actor.y) * 0.2;
-    }
-}
-
-function drawActor(actor) {
-    if (!actor) return;
-    if (actor.deathComplete) return;
-    ctx.save();
-    ctx.globalAlpha = 1.0;
-    const bossScale = actor.isBoss ? 1.6 : 1.0;
-    // Death Animation
-    let shadowAlpha = 0.5;
-    let spriteAlpha = 1.0;
-    let scale = bossScale;
-    let rotation = 0;
-    let yOffset = 0;
-
-    if (actor.health <= 0) {
-        if (actor.deathTimer === undefined) actor.deathTimer = 0;
-        actor.deathTimer++;
-
-        let progress = Math.min(1, actor.deathTimer / 45);
-        shadowAlpha = 0.5 * (1 - progress)
-        spriteAlpha = 1 - progress;
-        scale = bossScale * (1 - progress);
-        rotation = progress * Math.PI * 1.5;
-        yOffset = progress * 40;
+    if (actor.visualState === "dead") {
+        if (typeof actor.deathTimer !== "number") {
+            actor.deathTimer = 0;
+        }
+        actor.deathTimer += 1;
 
         if (actor.deathTimer >= 45) {
             actor.deathComplete = true;
         }
     }
-    // Ground Shadow
-    ctx.beginPath();
-    ctx.ellipse(actor.x, actor.baseY + 45, 35, 10, 0, 0, Math.PI * 2);
-    ctx.fillStyle = `rgb(0, 0, 0, ${shadowAlpha})`;
-    ctx.fill();
-    // Death Effect
+}
+
+function updateDamageEffects(actor) {
+    if (actor.pendingDamageEffect !== undefined) {
+        const isPlayer = (actor === player);
+        spawnDamagePopup(actor.baseX, actor.baseY, actor.pendingDamageEffect, isPlayer);
+        delete actor.pendingDamageEffect;
+        actor.isDefending = false;
+    }
+}
+
+function updateMovement(actor, target) {
+    if (actor.visualState === "attacking" && target) {
+        actor.x = actor.baseX + (target.baseX - actor.baseX) * GAME_CONFIG.actor.lungeFactor;
+    } else if (actor.visualState === "dead") {
+        actor.x = actor.baseX;
+        actor.y = actor.baseY + Math.min(actor.deathTimer || 0, 40);
+    } else if (actor.visualState === "hurt") {
+        actor.x = actor.baseX + (Math.random() - 0.5) * GAME_CONFIG.actor.shakeIntensity;
+        actor.y = actor.baseY;
+    } else if (actor.visualState === "dead") {
+        actor.x = actor.baseX;
+    } else {
+        actor.x += (actor.baseX - actor.x) * GAME_CONFIG.actor.returnSpeed;
+        if (typeof portraits[actor.charClass] === "string") {
+            const bob = Math.sin(performance.now() * GAME_CONFIG.actor.breathingSpeed) * GAME_CONFIG.actor.breathingAmplitude;
+            actor.y += (actor.baseY + bob - actor.y) * GAME_CONFIG.actor.returnSpeed;
+        } else {
+            actor.y += (actor.baseY - actor.y) * GAME_CONFIG.actor.returnSpeed;
+        }
+    }
+}
+
+function updateActor(actor, target) {
+    if (!actor || actor.deathComplete) return;
+    updateAnimation(actor);
+    updateState(actor);
+    updateDamageEffects(actor);
+    updateMovement(actor, target);
+}
+
+function drawSprite(actor, spriteAlpha, scale, rotation, yOffset) {
+
+    ctx.save();
+    const progress = Number.isFinite(actor.deathTimer) ? Math.min(1, actor.deathTimer / 45) : 0;
+    spriteAlpha = 1 - progress;
+    scale *= (1 - progress);
+    rotation = progress * Math.PI * 1.5;
+    yOffset = progress * 40;
+
     ctx.translate(actor.x, actor.y + yOffset);
+
     ctx.rotate(rotation);
-    ctx.scale(scale, scale);
+
+    const shouldFlip = Boolean(actor.isEnemy);
+    ctx.scale(scale * (shouldFlip ? -1 : 1), scale);
+
     ctx.globalAlpha = spriteAlpha;
-    // Status
-    if (actor.visualState === 'hurt' && actor.health > 0) {
-        ctx.shadowColor = '#e74c3c';
+
+    if (actor.visualState === "hurt" && actor.health > 0) {
+        ctx.shadowColor = "#e74c3c";
         ctx.shadowBlur = 20;
     }
-    // Non-Transparent background for emoji
-    const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, 25);
-    halo.addColorStop(0, '#110c22');
-    halo.addColorStop(0.6, '#110c22')
-    halo.addColorStop(1, 'rgba(17, 12, 34, 0)');
-    ctx.fillStyle = halo;
-    ctx.beginPath();
-    ctx.arc(0, 0, 25, 0, Math.PI * 2);
-    ctx.fill();
-    // Sprite
-    ctx.font = '64px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#ffffff';
-    const emoji = portraits[actor.charClass];
-    let xNudge = 0;
-    let yNudge = 0;
-    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-    if (actor === player && isMobile) {
-        xNudge = -4;
-    }
-    ctx.fillText(emoji, xNudge, yNudge);
-    ctx.fillText(emoji, xNudge, yNudge);
-    ctx.shadowBlur = 0;
-    // Name Text
-    if (actor.health > 0) {
-    ctx.fillStyle = '#ecf0f1'
-    ctx.font = 'bold 14px monospace';
-    ctx.fillText(actor.name || '???', 0, 50);
-    // Inventory Potions
-    if (actor.potions > 0) {
-        ctx.fillStyle = '#a0d094'
-        ctx.font = 'bold 11px monospace';
-        ctx.fillText(`🧪 x${actor.potions}`, 0, 68);
-    }
-    // Dynamic Health Bar
-    const hpPercent = actor.maxHealth > 0 ? Math.max(0, actor.health / actor.maxHealth) : 0;
-    const barWidth = 70;
-    const barHeight = 6;
-    const barX = 0 - barWidth / 2;
-    const barY = 0 - 55;
-    //
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(barX, barY, barWidth, barHeight);
-    // Health color change
-    ctx.fillStyle = hpPercent < 0.3 ? '#e74c3c' : '#2ecc71';
-    ctx.fillRect(barX, barY, barWidth * hpPercent, barHeight);
-    // Border Outline
-    ctx.strokeStyle = '#7f8c8d';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+    const charSprites = loadedSprites[actor.charClass];
+
+    if (charSprites && actor.currentAnim) {
+
+        const sprite = charSprites[actor.currentAnim] || charSprites.idle;
+        const characterConfig = window.animConfig?.[actor.charClass] || window.animConfig?.Knight;
+        const config = characterConfig?.[actor.currentAnim] || characterConfig?.idle;
+
+        if (sprite && sprite.loaded && config) {
+
+            const frameWidth = sprite.width / config.frames;
+            const frameHeight = sprite.height;
+
+            const sourceX = actor.frameIndex * frameWidth;
+
+            const drawScale = 2;
+
+            const offsetX = (config.offsetX || 0) * scale;
+            const offsetY = (config.offsetY || 0) * scale;
+
+            ctx.drawImage(sprite, sourceX, 0, frameWidth, frameHeight, -(frameWidth * drawScale) / 2 + offsetX, -frameHeight * drawScale + offsetY, frameWidth * drawScale, frameHeight * drawScale);
+        }
     }
     ctx.restore();
 }
 
+function getSpriteHeight(actor) {
+    const characterConfig = window.animConfig?.[actor.charClass] || window.animConfig?.Knight;
+    const config = characterConfig?.[actor.currentAnim] || characterConfig?.idle;
+    const visualScale = actor.isBoss ? GAME_CONFIG.actor.bossScale : 1;
+
+    if (config?.visualHeight) {
+        return config.visualHeight * visualScale;
+    }
+
+    const sprite = loadedSprites[actor.charClass]?.[actor.currentAnim] || loadedSprites[actor.charClass]?.idle;
+    return sprite ? sprite.height * 2 * visualScale : 80;
+}
+
+function drawHealthBar(actor, hpPercent, yOffset) {
+
+    const width = GAME_CONFIG.ui.healthBarWidth;
+    const height = GAME_CONFIG.ui.healthBarHeight;
+
+    ctx.save();
+    ctx.translate(actor.x, actor.y + yOffset);
+
+    const spriteHeight = getSpriteHeight(actor);
+    const x = -width / 2 - 6;
+    const y = -(spriteHeight + 8);
+
+    ctx.fillStyle = "#1a1a1a";
+    ctx.fillRect(x, y, width, height);
+
+    ctx.fillStyle = hpPercent < 0.3 ? "#e74c3c" : "#2ecc71";
+    ctx.fillRect(x, y, width * hpPercent, height);
+
+    ctx.strokeStyle = "#7f8c8d";
+    ctx.strokeRect(x, y, width, height);
+
+    ctx.restore();
+}
+
+function drawActorName(actor, yOffset) {
+    ctx.save();
+    ctx.translate(actor.x, actor.y + yOffset);
+
+    ctx.fillStyle = "#ecf0f1";
+    ctx.font = "bold 14px monospace";
+    ctx.textAlign = "center";
+    ctx.strokeStyle = "#111111";
+    ctx.lineWidth = 4;
+
+    const labelX = 15;
+    const labelY = 20;
+
+    ctx.strokeText(actor.name || "???", labelX, labelY);
+    ctx.fillText(actor.name || "???", labelX, labelY);
+
+    ctx.restore();
+}
+
+function drawPotionCount(actor, yOffset) {
+    if (actor.potions <= 0) return;
+
+    ctx.save();
+    ctx.translate(actor.x, actor.y + yOffset);
+
+    ctx.fillStyle = "#a0d094";
+    ctx.font = "bold 11px monospace";
+    ctx.textAlign = "center";
+    ctx.strokeStyle = "#111111";
+    ctx.lineWidth = 3;
+
+    const labelX = 15;
+    const labelY = 38;
+
+    ctx.strokeText(`🧪 x${actor.potions}`, labelX, labelY);
+    ctx.fillText(`🧪 x${actor.potions}`, labelX, labelY);
+
+    ctx.restore();
+}
+
+function drawActor(actor) {
+
+    if (!actor || actor.deathComplete)
+        return;
+    let shadowAlpha = 0.5;
+    let spriteAlpha = 1;
+    let rotation = 0;
+    let yOffset = 0;
+    const scale = actor.isBoss ? GAME_CONFIG.actor.bossScale : 1;
+    drawSprite(
+        actor,
+        spriteAlpha,
+        scale,
+        rotation,
+        yOffset
+    );
+    if (actor.health <= 0)
+        return;
+    const hpPercent =
+        actor.health / actor.maxHealth;
+    drawHealthBar(
+        actor,
+        hpPercent,
+        yOffset
+    );
+    drawPotionCount(
+        actor,
+        yOffset
+    );
+    drawActorName(
+        actor,
+        yOffset
+    );
+}
+
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Background Sway
-    const now = Date.now();
-    const swayX = Math.sin(now / 4000) * 8;
-    const swayY = Math.cos(now / 5000) * 4;
-    // Detect enemy/background change and kick off a crossfade
-    const newBgKey = getCurrentBgKey();
-    if (newBgKey !== activeBgKey) {
-        previousBgImage = loadedBackgrounds[activeBgKey] || null;
-        activeBgKey = newBgKey;
-        transitionStart = now;
-    }
+    const now = performance.now();
+    BackgroundManager.update(now);
+    BackgroundManager.draw(now);
 
-    const currentBgImage = loadedBackgrounds[activeBgKey];
-    const elapsedSinceSwitch = now - transitionStart;
-    const inTransition = previousBgImage && elapsedSinceSwitch < transitionDuration;
-
-    if (inTransition) {
-        const progress = Math.min(1, elapsedSinceSwitch / transitionDuration);
-        drawBackgroundImage(previousBgImage, swayX, swayY, 1);       // old bg fully visible underneath
-        drawBackgroundImage(currentBgImage, swayX, swayY, progress); // new bg fades in on top
-    } else if (currentBgImage && currentBgImage.loaded) {
-        drawBackgroundImage(currentBgImage, swayX, swayY, 1);
-    } else {
-        ctx.save();
-        ctx.translate(swayX, swayY);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(-20, -20, canvas.width + 40, canvas.height + 40);
-        ctx.restore();
-    }
-
-    if (typeof player !== 'undefined' && player.health > 0) {
+    if (typeof player !== 'undefined' && !player.deathComplete) {
         updateActor(player, currentEnemy);
     }
-    if (typeof currentEnemy !== 'undefined' && currentEnemy.health > 0) {
+    if (typeof currentEnemy !== 'undefined' && !currentEnemy.deathComplete) {
         updateActor(currentEnemy, player);
     }
     if (typeof player !== 'undefined' && !player.deathComplete) {
@@ -291,8 +327,8 @@ function spawnDamagePopup(x, y, amount, isPlayer) {
         text: text,
         color: color,
         alpha: 1.0,
-        velocityY: -1.5,
-        life: 100
+        velocityY: GAME_CONFIG.popup.velocityY,
+        life: GAME_CONFIG.popup.lifetime
     });
 }
 gameLoop();

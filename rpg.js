@@ -41,24 +41,24 @@ const class_info = {
     Knight: {
         portrait: '🗡️',
         description: 'A powerful warrior who relies on armor and strength',
-        stats: 'Health: Medium<br><br>Attack: Medium-High'
+        stats: 'Health: High<br><br>Attack: Medium-High'
     },
     Magician: {
         portrait: '🧙🏼‍♂️',
         description: 'A spellcaster with devastating attacks',
         stats: 'Health: Low<br><br>Attack: High'
     },
-    Archer: {
-        portrait: '🏹',
-        description: 'A ranged fighter with excellent survival',
-        stats: 'Health: High<br><br>Attack: Low'
+    Samurai: {
+        portrait: '🥷🏻',
+        description: 'An adaptable warrior wielding reliable offensive strikes and moderate resilience',
+        stats: 'Health: Medium<br><br>Attack: Medium'
     }
 };
 
 const class_icons = {
     Knight: '🗡️',
     Magician: '🧙🏼‍♂️',
-    Archer: '🏹'
+    Samurai: '🏹'
 };
 
 function showClassInfo(className) {
@@ -194,7 +194,7 @@ function spawnBoss() {
 const playerConfigs = {
     Knight: {healthRange: [55,75], attackRange: [16, 26], potions: 3},
     Magician: {healthRange: [50, 70], attackRange: [20, 30], potions: 5},
-    Archer: {healthRange: [70, 80], attackRange: [14, 22], potions: 2}
+    Samurai: {healthRange: [70, 80], attackRange: [14, 22], potions: 2}
 };
 
 function initPlayer(name, charClass) {

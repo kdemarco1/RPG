@@ -8,14 +8,14 @@ const GAME_CONFIG = {
     },
 
     animation: {
-        idleSpeed: 12,
-        attackSpeed: 20,
+        idleSpeed: 20,
+        attackSpeed: 50,
         hurtSpeed: 50,
         defendSpeed: 50
     },
 
     actor: {
-        lungeFactor: 0.4,
+        lungeFactor: 0.6,
         shakeIntensity: 8,
         breathingSpeed: 0.005,
         breathingAmplitude: 5,

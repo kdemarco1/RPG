@@ -76,8 +76,8 @@ function updateDamageEffects(actor) {
 }
 
 function updateMovement(actor, target) {
-    if (actor.visualState === "attacking" && target) {
-        actor.x = actor.baseX + (target.baseX - actor.baseX) * GAME_CONFIG.actor.lungeFactor;
+    if (actor.visualState === "attacking") {
+        actor.x = actor.baseX;
     } else if (actor.visualState === "dead") {
         actor.x = actor.baseX;
         actor.y = actor.baseY + Math.min(actor.deathTimer || 0, 40);

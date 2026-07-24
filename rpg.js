@@ -4,9 +4,10 @@
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const enemy_attack_delay = 1000;
 const next_foe_delay= 1800;
-const text_delay_multiplier = 40;
+const text_delay_multiplier = 15;
 const max_text_delay = 4000;
 const max_enemies = 3;
+const character_lift = 40;
 
 // DOM References
 const startScreen = document.getElementById('startScreen');
@@ -40,24 +41,24 @@ const class_info = {
     Knight: {
         portrait: '🗡️',
         description: 'A powerful warrior who relies on armor and strength',
-        stats: 'Health: Medium<br><br>Attack: Medium-High'
+        stats: 'Health: High<br><br>Attack: Medium-High'
     },
     Magician: {
         portrait: '🧙🏼‍♂️',
         description: 'A spellcaster with devastating attacks',
         stats: 'Health: Low<br><br>Attack: High'
     },
-    Archer: {
-        portrait: '🏹',
-        description: 'A ranged fighter with excellent survival',
-        stats: 'Health: High<br><br>Attack: Low'
+    Samurai: {
+        portrait: '🥷🏻',
+        description: 'An adaptable warrior wielding reliable offensive strikes and moderate resilience',
+        stats: 'Health: Medium<br><br>Attack: Medium'
     }
 };
 
 const class_icons = {
     Knight: '🗡️',
     Magician: '🧙🏼‍♂️',
-    Archer: '🏹'
+    Samurai: '🏹'
 };
 
 function showClassInfo(className) {
@@ -97,8 +98,8 @@ function resetClassSelectionUI() {
 
     document.getElementById('portrait').style.display = '';
     document.getElementById('portrait').textContent = '';
-    document.getElementById('selectedTitle').textContent = '';
-    document.getElementById('classDescription').textContent = '';
+    document.getElementById('selectedTitle').textContent = 'Choose a Class';
+    document.getElementById('classDescription').textContent = 'Each character will have different health and attack power';
     document.getElementById('classStats').innerHTML = '';
 
     confirmClassButton.style.display = 'none';
@@ -107,11 +108,10 @@ function resetClassSelectionUI() {
     selectedClass = '';
     classConfirmed = false;
 }
-
 // Character Class
 
 class Character {
-    constructor(name, health, attackRange, charClass, potions = 0) {
+    constructor(name, health, attackRange, charClass, potions = 0, baseX = 0, baseY = 0) {
         this.name = name;
         this.health = health;
         this.maxHealth = health;
@@ -119,10 +119,11 @@ class Character {
         this.charClass = charClass;
         this.potions = potions;
         this.isDefending = false;
-        this.x = 0;
-        this.y = 0;
-        this.baseX = 0;
-        this.baseY = 0;
+        this.x = baseX;
+        this.y = baseY;
+        this.baseX = baseX;
+        this.baseY = baseY;
+        this.isEnemy = false;
         this.visualState = 'idle';
         this.stateTimer = 0;
     }
@@ -134,7 +135,9 @@ class Character {
     async attack(target) {
         let currentDamage = this.attackLevel;
         this.visualState = 'attacking';
-        this.stateTimer = 15;
+
+        const attackConfig = window.animConfig?.[this.charClass]?.attacking;
+        this.stateTimer = attackConfig ? attackConfig.frames * attackConfig.speed : 15;
 
         if (target.isDefending) {
             currentDamage = Math.floor(currentDamage / 2);
@@ -144,9 +147,9 @@ class Character {
         } else {
             await writeSlowly(`${this.name} attacks the ${target.name}, dealing ${currentDamage} damage.`);
         }
-        
-        await target.takeDamage(currentDamage);
-    }
+    
+    await target.takeDamage(currentDamage);
+}
 
     async takeDamage(damageValue) {
         this.health = Math.max(0, this.health - damageValue);
@@ -154,6 +157,8 @@ class Character {
 
         if (this.health <= 0) {
             this.visualState = 'dead';
+            this.deathTimer = 0;
+            this.deathComplete = false;
         } else {
             this.visualState = 'hurt';
             this.stateTimer = 20;
@@ -166,10 +171,10 @@ let player = new Character('', 0, [0, 0], '', 0);
 
 const enemyLibrary = [
     {name: 'Magician', healthRange: [40,48], attackRange: [14, 20], charClass: 'Magician', potions: 5},
-    {name: 'Zombie', healthRange: [32,40], attackRange: [6, 12], charClass: 'Zombie', potions: 0},
-    {name: 'Ghoul', healthRange: [24,48], attackRange: [6, 14], charClass: 'Ghoul', potions: 3},
-    {name: 'Demon', healthRange: [38,48], attackRange: [10, 22], charClass: 'Demon', potions: 1},
-    {name: 'Basilisk', healthRange: [40,48], attackRange: [12, 20], charClass: 'Basilisk', potions: 2},
+    {name: 'Gorgon', healthRange: [32,40], attackRange: [6, 12], charClass: 'Gorgon', potions: 0},
+    {name: 'Minotaur', healthRange: [24,48], attackRange: [6, 14], charClass: 'Minotaur', potions: 3},
+    {name: 'Werewolf', healthRange: [38,48], attackRange: [10, 22], charClass: 'Werewolf', potions: 1},
+    {name: 'Skeleton', healthRange: [40,48], attackRange: [12, 20], charClass: 'Skeleton', potions: 2},
 ];
 
 const bossTemplate = {
@@ -182,27 +187,33 @@ const bossTemplate = {
 
 function spawnBoss() {
     const health = getRandomInt(bossTemplate.healthRange[0], bossTemplate.healthRange[1]);
-    return new Character(bossTemplate.name, health, bossTemplate.attackRange, bossTemplate.charClass, bossTemplate.potions, true);
+    const boss = new Character(bossTemplate.name, health, bossTemplate.attackRange, bossTemplate.charClass, bossTemplate.potions, true);
+    boss.isEnemy = true;
+    return boss;
 }
 
 const playerConfigs = {
     Knight: {healthRange: [55,75], attackRange: [16, 26], potions: 3},
     Magician: {healthRange: [50, 70], attackRange: [20, 30], potions: 5},
-    Archer: {healthRange: [70, 80], attackRange: [14, 22], potions: 2}
+    Samurai: {healthRange: [70, 80], attackRange: [14, 22], potions: 2}
 };
 
 function initPlayer(name, charClass) {
     const config = playerConfigs[charClass];
     const hp = getRandomInt(config.healthRange[0], config.healthRange[1]);
     const finalName = name.trim();
-    return new Character(finalName, hp, config.attackRange, charClass, config.potions);
+    const playerCharacter = new Character(finalName, hp, config.attackRange, charClass, config.potions);
+    playerCharacter.isEnemy = false;
+    return playerCharacter;
 }
 
 function spawnRandomEnemy(){
     const template = enemyLibrary[Math.floor(Math.random() * enemyLibrary.length)];
     const health = getRandomInt(template.healthRange[0], template.healthRange[1]);
     const enemyPotions = template.potions;
-    return new Character(template.name, health, template.attackRange, template.charClass, template.potions);
+    const enemy = new Character(template.name, health, template.attackRange, template.charClass, template.potions);
+    enemy.isEnemy = true;
+    return enemy;
 }
 
 // Class Selection listeners
@@ -264,8 +275,8 @@ beginAdventureButton.addEventListener('click', startGame);
 async function startGame() {
     startScreen.style.display = 'none';
     battleScreen.style.display = 'block';
-    player.baseX = 150;
-    player.baseY = 250;
+    player.baseX = canvas.width * 0.25;
+    player.baseY = canvas.height - 40 - character_lift;
     player.x = player.baseX;
     player.y = player.baseY;
     await writeSlowly(`${player.name} the ${player.charClass} begins their adventure!`);
@@ -274,8 +285,8 @@ async function startGame() {
 
 async function startEncounter(enemy){
     currentEnemy = enemy
-    currentEnemy.baseX = 600;
-    currentEnemy.baseY = 250;
+    currentEnemy.baseX = canvas.width * 0.76;
+    currentEnemy.baseY = canvas.height - 40 - character_lift;
     currentEnemy.x = currentEnemy.baseX;
     currentEnemy.y = currentEnemy.baseY;
 
@@ -325,7 +336,7 @@ async function handleEnemyDefeat(){
         showActionButtons(false);
         document.getElementById('choiceButtons').style.display = 'block';
     } else {
-        await writeSlowly(`All enemies have been defeated! Congratulations, ${player.name}, you win!`);
+        await writeSlowly(`All enemies have been defeated! Congratulations ${player.name}, you win!`);
         document.getElementById('attackButton').style.display = 'none';
         document.getElementById('defendButton').style.display = 'none';
         document.getElementById('healButton').style.display = 'none';

@@ -4,10 +4,12 @@
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const enemy_attack_delay = 1000;
 const next_foe_delay= 1800;
-const text_delay_multiplier = 15;
+const text_delay_multiplier = 35;
 const max_text_delay = 4000;
-const max_enemies = 3;
+const boss_interval = 3;
+let bossesDefeated = 0;
 const character_lift = 40;
+const xp_per_level = 30;
 
 // DOM References
 const startScreen = document.getElementById('startScreen');
@@ -19,6 +21,20 @@ const beginAdventureButton = document.getElementById('beginAdventureButton');
 const attackButton = document.getElementById('attackButton');
 const defendButton = document.getElementById('defendButton');
 const healButton = document.getElementById('healButton');
+const victoryScreen = document.getElementById('victoryScreen');
+const victoryMessage = document.getElementById('victoryMessage');
+const victoryPlayAgainButton = document.getElementById('victoryPlayAgainButton');
+const defeatScreen = document.getElementById('defeatScreen');
+const defeatMessage = document.getElementById('defeatMessage');
+const defeatPlayAgainButton = document.getElementById('defeatPlayAgainButton');
+const fleeScreen = document.getElementById('fleeScreen');
+const fleeMessage = document.getElementById('fleeMessage');
+const fleePlayAgainButton = document.getElementById('fleePlayAgainButton');
+const levelUpOverlay = document.getElementById('levelUpOverlay');
+const chooseAttackButton = document.getElementById('chooseAttackButton');
+const chooseDefenseButton = document.getElementById('chooseDefenseButton');
+const chooseHealButton = document.getElementById('chooseHealButton');
+const continueAdventureButton = document.getElementById('continueAdventureButton');
 
 // Game Stats
 let selectedClass = '';
@@ -58,7 +74,7 @@ const class_info = {
 const class_icons = {
     Knight: '🗡️',
     Magician: '🧙🏼‍♂️',
-    Samurai: '🏹'
+    Samurai: '🥷🏻'
 };
 
 function showClassInfo(className) {
@@ -113,8 +129,10 @@ function resetClassSelectionUI() {
 class Character {
     constructor(name, health, attackRange, charClass, potions = 0, baseX = 0, baseY = 0) {
         this.name = name;
+        this.baseMaxHealth = health;
         this.health = health;
         this.maxHealth = health;
+        this.baseAttackRange = [...attackRange];
         this.attackRange = attackRange;
         this.charClass = charClass;
         this.potions = potions;
@@ -126,10 +144,73 @@ class Character {
         this.isEnemy = false;
         this.visualState = 'idle';
         this.stateTimer = 0;
+        this.totalXP = 0;
+        this.hitsThisFight = 0;
+        this.bonusAttack = 0;
+        this.bonusDefense = 0;
     }
 
     get attackLevel() {
         return getRandomInt(this.attackRange[0], this.attackRange[1]);
+    }
+
+    get level() {
+        return 1 + Math.floor(this.totalXP / xp_per_level);
+    }
+
+    get currentLevelProgress() {
+        return this.totalXP % xp_per_level;
+    }
+
+    recalculateStats() {
+        const healthBonus = Math.floor(this.totalXP * 0.5);
+        const attackBonus = Math.floor(this.totalXP * 0.06);
+
+        const oldMaxHealth = this.maxHealth;
+        this.maxHealth = this.baseMaxHealth + healthBonus;
+        this.attackRange = [
+            this.baseAttackRange[0] + attackBonus,
+            this.baseAttackRange[1] + attackBonus
+        ];
+
+        const healthGained = this.maxHealth - oldMaxHealth;
+        if (healthGained > 0) {
+            this.health = Math.min(this.health + healthGained, this.maxHealth);
+        }
+    }
+
+    async applyLevelUpChoice(choice) {
+        if (choice === 'attack') {
+            this.bonusAttack += 3;
+            this.recalculateStats();
+            await writeSlowly(`${this.name}'s attack power increased!`);
+        } else if (choice === 'defense') {
+            this.bonusDefense += 3;
+            await writeSlowly(`${this.name}'s defense increased!`);
+        } else if (choice === 'heal') {
+            this.health = this.maxHealth;
+            await writeSlowly(`${this.name} was fully healed!`);
+        }
+        updateBattleUI();
+    }
+    
+    async gainXP(amount) {
+        const oldLevel = this.level;
+        const oldXP = this.totalXP;
+        this.totalXP += amount;
+        this.recalculateStats();
+
+        await writeSlowly(`${this.name} gained ${amount} XP!`);
+        await animateXpBar(oldXP, this.totalXP);
+
+        const levelsGained = this.level - oldLevel;
+        for (let i = 0; i < levelsGained; i++) {
+            await writeSlowly(`${this.name} reached Level ${oldLevel + i + 1}!`);
+            if (this === player) {
+                const choice = await promptLevelUpChoice();
+                await this.applyLevelUpChoice(choice);
+            }
+        }
     }
 
     async attack(target) {
@@ -170,32 +251,48 @@ class Character {
 let player = new Character('', 0, [0, 0], '', 0);
 
 const enemyLibrary = [
-    {name: 'Magician', healthRange: [40,48], attackRange: [14, 20], charClass: 'Magician', potions: 5},
-    {name: 'Gorgon', healthRange: [32,40], attackRange: [6, 12], charClass: 'Gorgon', potions: 0},
-    {name: 'Minotaur', healthRange: [24,48], attackRange: [6, 14], charClass: 'Minotaur', potions: 3},
-    {name: 'Werewolf', healthRange: [38,48], attackRange: [10, 22], charClass: 'Werewolf', potions: 1},
-    {name: 'Skeleton', healthRange: [40,48], attackRange: [12, 20], charClass: 'Skeleton', potions: 2},
+    {name: 'Magician', healthRange: [40,48], attackRange: [14, 20], charClass: 'Magician', potions: 3},
+    {name: 'Gorgon', healthRange: [32,40], attackRange: [6, 12], charClass: 'Gorgon', potions: 1},
+    {name: 'Minotaur', healthRange: [24,48], attackRange: [6, 14], charClass: 'Minotaur', potions: 0},
+    {name: 'Werewolf', healthRange: [38,48], attackRange: [10, 22], charClass: 'Werewolf', potions: 0},
+    {name: 'Skeleton', healthRange: [40,48], attackRange: [12, 20], charClass: 'Skeleton', potions: 0},
 ];
 
 const bossTemplate = {
     name: 'Ignis, The Beacon of False Hope',
-    healthRange: [140, 170],
-    attackRange: [22, 34],
+    healthRange: [220, 260],
+    attackRange: [30, 44],
     charClass: 'Boss',
-    potions: 2
+    potions: 1
 };
 
-function spawnBoss() {
-    const health = getRandomInt(bossTemplate.healthRange[0], bossTemplate.healthRange[1]);
-    const boss = new Character(bossTemplate.name, health, bossTemplate.attackRange, bossTemplate.charClass, bossTemplate.potions, true);
+function spawnBoss(bossNumber) {
+    const difficultyScale = 1 + (bossNumber - 1) * 0.25;
+
+    const health = Math.round(getRandomInt(bossTemplate.healthRange[0], bossTemplate.healthRange[1]) * difficultyScale);
+    const attackRange = [
+        Math.round(bossTemplate.attackRange[0] * difficultyScale),
+        Math.round(bossTemplate.attackRange[1] * difficultyScale)
+    ];
+    const bossName = bossNumber > 1 ? `${bossTemplate.name} (Tier ${bossNumber})` : bossTemplate.name;
+
+    const boss = new Character(bossName, health, attackRange, bossTemplate.charClass, bossTemplate.potions);
     boss.isEnemy = true;
+    boss.isBoss = true;
     return boss;
 }
 
+function spawnNextEncounter() {
+    if (enemiesDefeated > 0 && enemiesDefeated % boss_interval === 0) {
+        return spawnBoss(bossesDefeated + 1);
+    }
+    return spawnRandomEnemy();
+}
+
 const playerConfigs = {
-    Knight: {healthRange: [55,75], attackRange: [16, 26], potions: 3},
-    Magician: {healthRange: [50, 70], attackRange: [20, 30], potions: 5},
-    Samurai: {healthRange: [70, 80], attackRange: [14, 22], potions: 2}
+    Knight: {healthRange: [55,75], attackRange: [16, 26], potions: 0},
+    Magician: {healthRange: [50, 70], attackRange: [20, 30], potions: 3},
+    Samurai: {healthRange: [70, 80], attackRange: [14, 22], potions: 0}
 };
 
 function initPlayer(name, charClass) {
@@ -246,14 +343,20 @@ function updateBattleUI(){
         }
     };
     if (player) {
-    setElementText('playerName', player.name);
-    setElementText('playerHealth', player.health);
-    setElementText('playerPotions', player.potions);
+        setElementText('playerName', player.name);
+        setElementText('playerHealth', player.health);
+        setElementText('playerPotions', player.potions);
+        setElementText('playerLevelLabel', `Level ${player.level}`);
+        const xpFill = document.getElementById('playerXpFill');
+        if (xpFill) {
+            xpFill.style.transition = 'none';
+            xpFill.style.width = `${(player.currentLevelProgress / xp_per_level) * 100}%`;
+        }
     }
     if (currentEnemy) {
-    setElementText('enemyName', currentEnemy.name);
-    setElementText('enemyHealth', currentEnemy.health);
-    setElementText('enemyPotions', currentEnemy.potions);
+        setElementText('enemyName', currentEnemy.name);
+        setElementText('enemyHealth', currentEnemy.health);
+        setElementText('enemyPotions', currentEnemy.potions);
     }
 }
 
@@ -280,7 +383,7 @@ async function startGame() {
     player.x = player.baseX;
     player.y = player.baseY;
     await writeSlowly(`${player.name} the ${player.charClass} begins their adventure!`);
-    startEncounter(spawnRandomEnemy());
+    startEncounter(spawnNextEncounter());
 }
 
 async function startEncounter(enemy){
@@ -289,11 +392,16 @@ async function startEncounter(enemy){
     currentEnemy.baseY = canvas.height - 40 - character_lift;
     currentEnemy.x = currentEnemy.baseX;
     currentEnemy.y = currentEnemy.baseY;
+    player.hitsThisFight = 0;
 
     updateBattleUI();
-    
-    const enemyType = currentEnemy.charClass === player.charClass ? "another" : "a";
-    await writeSlowly(`${player.name} sees ${enemyType} ${currentEnemy.name}!`);
+    if (currentEnemy.isBoss) {
+        shakeScreen();
+        await writeSlowly(`A powerful boss approaches: ${currentEnemy.name}!`);
+    } else {
+        const enemyType = currentEnemy.charClass === player.charClass ? "another" : "a";
+        await writeSlowly(`${player.name} sees ${enemyType} ${currentEnemy.name}!`);
+    }
     toggleButtons(false);
 }
 
@@ -318,9 +426,10 @@ async function enemyTurn(){
     updateBattleUI();
 
     if (player.health <= 0){
-        await writeSlowly(`Defeat! ${player.name} has fallen in battle. Game over`);
-        showActionButtons(false);
-        document.getElementById('playAgainButton').style.display = 'inline-block';
+                await writeSlowly(`Defeat! ${player.name} has fallen in battle.`);
+        battleScreen.style.display = 'none';
+        defeatMessage.textContent = `${player.name} the ${player.charClass} fell after defeating ${enemiesDefeated} foe${enemiesDefeated === 1 ? '' : 's'}. Better luck next time.`;
+        defeatScreen.style.display = 'block';
     }
     else {
         toggleButtons(false);
@@ -330,17 +439,31 @@ async function enemyTurn(){
 async function handleEnemyDefeat(){
     await writeSlowly(`Victory! ${currentEnemy.name} has been defeated!`);
     enemiesDefeated++;
+    const wasBoss = currentEnemy.isBoss;
+    if (wasBoss) {
+        bossesDefeated++;
+    }
 
-    if (enemiesDefeated < max_enemies){
-        await writeSlowly(`Will you challenge the next foe or flee?`);
+    const avgPlayerDamage = (player.attackRange[0] + player.attackRange[1]) / 2;
+    const expectedHits = Math.max(1, Math.ceil(currentEnemy.maxHealth / avgPlayerDamage));
+    const actualHits = Math.max(1, player.hitsThisFight);
+    const efficiency = Math.min(2, expectedHits / actualHits);
+
+    const baseXP = Math.round(currentEnemy.maxHealth * 0.6) * (wasBoss ? 1.5 : 1);
+    const xpReward = Math.round(baseXP * efficiency);
+
+    await player.gainXP(xpReward);
+    updateBattleUI();
+
+    if (wasBoss) {
+        battleScreen.style.display = 'none';
+        victoryMessage.textContent = `${player.name} the ${player.charClass} has slain ${bossesDefeated === 1 ? 'the boss' : `${bossesDefeated} bosses`} and ${enemiesDefeated} foes total, reaching Level ${player.level}! Will you push onward, or bank this victory and rest?`;
+        victoryScreen.style.display = 'block';
+        launchConfetti();
+    } else {
+        writeSlowly(`Will you challenge the next foe or flee?`);
         showActionButtons(false);
         document.getElementById('choiceButtons').style.display = 'block';
-    } else {
-        await writeSlowly(`All enemies have been defeated! Congratulations ${player.name}, you win!`);
-        document.getElementById('attackButton').style.display = 'none';
-        document.getElementById('defendButton').style.display = 'none';
-        document.getElementById('healButton').style.display = 'none';
-        document.getElementById('playAgainButton').style.display = 'inline-block';
     }
 }
 
@@ -350,7 +473,7 @@ document.getElementById('nextFoeButton').addEventListener('click', async () => {
 
     await writeSlowly(`${player.name} bravely steps forward and challenges the next foe!`)
     await sleep(next_foe_delay);
-    startEncounter(spawnRandomEnemy());
+    startEncounter(spawnNextEncounter());
 });
 
 document.getElementById('fleeButton').addEventListener('click', async () => {
@@ -362,6 +485,7 @@ document.getElementById('fleeButton').addEventListener('click', async () => {
 attackButton.addEventListener('click', async () => {
     toggleButtons(true);
     player.isDefending = false;
+    player.hitsThisFight++;
     await player.attack(currentEnemy);
     updateBattleUI();
 
@@ -404,8 +528,11 @@ healButton.addEventListener('click', async () => {
 
 function resetGame() {
     battleScreen.style.display = 'none';
+    victoryScreen.style.display = 'none';
+    defeatScreen.style.display = 'none';
+    fleeScreen.style.display = 'none';
+    document.getElementById('confettiContainer').innerHTML = '';
     startScreen.style.display = '';
-    document.getElementById('playAgainButton').style.display = 'none';
     document.getElementById('choiceButtons').style.display = 'none';
     logBox.innerHTML = '';
 
@@ -413,8 +540,108 @@ function resetGame() {
     resetClassSelectionUI();
 
     enemiesDefeated = 0;
+    bossesDefeated = 0;
     player = new Character('', 0, [0,0], '', 0);
     currentEnemy = undefined;
 }
 
 document.getElementById('playAgainButton').addEventListener('click', resetGame);
+victoryPlayAgainButton.addEventListener('click', resetGame);
+defeatPlayAgainButton.addEventListener('click', resetGame);
+fleePlayAgainButton.addEventListener('click', resetGame);
+
+const confettiColors = ['#f1c40f', '#e74c3c', '#2ecc71', '#3498db', '#9b59b6', '#ffffff'];
+
+function launchConfetti(pieceCount = 80) {
+    const container = document.getElementById('confettiContainer');
+    container.innerHTML = ''; // clear any leftover pieces
+
+    for (let i = 0; i < pieceCount; i++) {
+        const piece = document.createElement('div');
+        piece.className = 'confetti-piece';
+        piece.style.left = `${Math.random() * 100}%`;
+        piece.style.backgroundColor = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+        piece.style.animationDuration = `${2 + Math.random() * 2}s`;
+        piece.style.animationDelay = `${Math.random() * 0.5}s`;
+        container.appendChild(piece);
+    }
+}
+
+document.getElementById('fleeButton').addEventListener('click', async () => {
+    document.getElementById('choiceButtons').style.display = 'none';
+    await writeSlowly(`${player.name} chose to flee! You live to fight another day`);
+    battleScreen.style.display = 'none';
+    fleeMessage.textContent = `${player.name} the ${player.charClass} fled after defeating ${enemiesDefeated} foe${enemiesDefeated === 1 ? '' : 's'}.`;
+    fleeScreen.style.display = 'block';
+});
+
+async function animateXpBar(startXP, endXP) {
+    const xpFill = document.getElementById('playerXpFill');
+    const levelLabel = document.getElementById('playerLevelLabel');
+    if (!xpFill) return;
+
+    let currentXP = startXP;
+
+    while (currentXP < endXP) {
+        const currentLevel = 1 + Math.floor(currentXP / xp_per_level);
+        const levelStartXP = (currentLevel - 1) * xp_per_level;
+        const levelEndXP = currentLevel * xp_per_level;
+        const target = Math.min(endXP, levelEndXP);
+
+        const endPercent = ((target - levelStartXP) / xp_per_level) * 100;
+
+        if (levelLabel) levelLabel.textContent = `Level ${currentLevel}`;
+        xpFill.style.transition = 'width 0.6s ease-out';
+        xpFill.style.width = `${endPercent}%`;
+        await sleep(650);
+
+        if (target === levelEndXP && target < endXP) {
+            // hit a level boundary mid-gain — flash full, then reset for the next level
+            await sleep(150);
+            xpFill.style.transition = 'none';
+            xpFill.style.width = '0%';
+            await sleep(100);
+        }
+
+        currentXP = target;
+    }
+}
+
+function promptLevelUpChoice() {
+    return new Promise((resolve) => {
+        levelUpOverlay.style.display = 'flex';
+
+        function onAttack() { cleanup('attack'); }
+        function onDefense() { cleanup('defense'); }
+        function onHeal() { cleanup('heal'); }
+
+        function cleanup(choice) {
+            levelUpOverlay.style.display = 'none';
+            chooseAttackButton.removeEventListener('click', onAttack);
+            chooseDefenseButton.removeEventListener('click', onDefense);
+            chooseHealButton.removeEventListener('click', onHeal);
+            resolve(choice);
+        }
+
+        chooseAttackButton.addEventListener('click', onAttack);
+        chooseDefenseButton.addEventListener('click', onDefense);
+        chooseHealButton.addEventListener('click', onHeal);
+    });
+}
+
+continueAdventureButton.addEventListener('click', async () => {
+    victoryScreen.style.display = 'none';
+    battleScreen.style.display = 'block';
+    showActionButtons(true);
+
+    await writeSlowly(`${player.name} presses onward, seeking the next challenge!`);
+    await sleep(next_foe_delay);
+    startEncounter(spawnNextEncounter());
+});
+
+function shakeScreen() {
+    const canvasEl = document.getElementById('gameCanvas');
+    canvasEl.classList.remove('shake'); // reset in case it's still mid-animation
+    void canvasEl.offsetWidth; // force reflow so the animation restarts cleanly
+    canvasEl.classList.add('shake');
+}

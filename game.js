@@ -194,8 +194,8 @@ function getSpriteHeight(actor) {
 
 function drawHealthBar(actor, hpPercent, yOffset) {
 
-    const width = GAME_CONFIG.ui.healthBarWidth;
-    const height = GAME_CONFIG.ui.healthBarHeight;
+    const width = actor.isBoss ? GAME_CONFIG.ui.healthBarWidth * 2 : GAME_CONFIG.ui.healthBarWidth;
+    const height = actor.isBoss ? GAME_CONFIG.ui.healthBarHeight * 1.5 : GAME_CONFIG.ui.healthBarHeight;
 
     ctx.save();
     ctx.translate(actor.x, actor.y + yOffset);
@@ -211,6 +211,7 @@ function drawHealthBar(actor, hpPercent, yOffset) {
     ctx.fillRect(x, y, width * hpPercent, height);
 
     ctx.strokeStyle = "#7f8c8d";
+    ctx.lineWidth = actor.isBoss ? 2 : 1;
     ctx.strokeRect(x, y, width, height);
 
     ctx.restore();

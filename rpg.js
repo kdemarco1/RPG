@@ -148,6 +148,7 @@ class Character {
         this.hitsThisFight = 0;
         this.bonusAttack = 0;
         this.bonusDefense = 0;
+        this.poison = null;
     }
 
     get attackLevel() {
@@ -213,23 +214,61 @@ class Character {
         }
     }
 
-    async attack(target) {
-        let currentDamage = this.attackLevel;
-        this.visualState = 'attacking';
+    async attack(target, isFollowUp = false) {
+    let currentDamage = this.attackLevel;
+    this.visualState = 'attacking';
 
-        const attackConfig = window.animConfig?.[this.charClass]?.attacking;
-        this.stateTimer = attackConfig ? attackConfig.frames * attackConfig.speed : 15;
+    const attackConfig = window.animConfig?.[this.charClass]?.attacking;
+    this.stateTimer = attackConfig ? attackConfig.frames * attackConfig.speed : 15;
 
-        if (target.isDefending) {
-            currentDamage = Math.floor(currentDamage / 2);
-            await writeSlowly(`${target.name} blocked the attack from ${this.name}! ${target.name} takes ${currentDamage} damage.`);
-        } else if (target === player) {
-            await writeSlowly(`${this.name} attacks you, dealing ${currentDamage} damage.`);
-        } else {
-            await writeSlowly(`${this.name} attacks the ${target.name}, dealing ${currentDamage} damage.`);
-        }
-    
+    const behavior = enemyBehaviors[this.charClass];
+    let blockedByDefense = false;
+
+    if (target.isDefending) {
+        blockedByDefense = true;
+        currentDamage = Math.floor(currentDamage / 2);
+        await writeSlowly(`${target.name} blocked the attack from ${this.name}! ${target.name} takes ${currentDamage} damage.`);
+    } else if (target === player) {
+        await writeSlowly(`${this.name} attacks you, dealing ${currentDamage} damage.`);
+    } else {
+        await writeSlowly(`${this.name} attacks the ${target.name}, dealing ${currentDamage} damage.`);
+    }
+
     await target.takeDamage(currentDamage);
+
+    // Skeleton
+    if (blockedByDefense && behavior?.counterChance && target.health > 0 && Math.random() < behavior.counterChance) {
+        await writeSlowly(`${this.name} sees an opening and counters!`);
+        await target.takeDamage(this.attackLevel);
+    }
+
+    // Gorgon
+    if (behavior?.poisonChance && target.health > 0 && Math.random() < behavior.poisonChance) {
+        const poisonDamage = Math.max(2, Math.round(currentDamage * 0.3));
+        target.poison = { turnsLeft: 3, damagePerTurn: poisonDamage };
+        await writeSlowly(`${target.name} has been poisoned!`);
+    }
+
+    // Werewolf
+    if (behavior?.doubleAttack && !isFollowUp && target.health > 0) {
+        await writeSlowly(`${this.name} lunges again for a second strike!`);
+        await this.attack(target, true);
+    }
+}
+
+    async siphon(target) {
+        const siphonAmount = getRandomInt(12, 24);
+        const actualDrain = Math.min(siphonAmount, target.health);
+
+        spawnSiphonEffect(target, this, 110);
+
+        target.pendingDamageEffect = actualDrain;
+        await target.takeDamage(actualDrain);
+
+        this.health = Math.min(this.health + actualDrain, this.maxHealth);
+        this.pendingDamageEffect = `+${actualDrain}`;
+
+        await writeSlowly(`${this.name} siphons ${actualDrain} health from ${target.name}!`);
 }
 
     async takeDamage(damageValue) {
@@ -246,6 +285,17 @@ class Character {
         }
         await writeSlowly(`${this.name}'s health is now ${this.health}`);
     }
+
+    async tickPoison() {
+        if (!this.poison || this.poison.turnsLeft <= 0) return;
+        const dmg = this.poison.damagePerTurn;
+        await writeSlowly(`${this.name} suffers ${dmg} poison damage!`);
+        await this.takeDamage(dmg);
+        this.poison.turnsLeft--;
+        if (this.poison.turnsLeft <= 0) {
+                this.poison = null;
+        }
+    }
 }
 
 let player = new Character('', 0, [0, 0], '', 0);
@@ -257,6 +307,13 @@ const enemyLibrary = [
     {name: 'Werewolf', healthRange: [38,48], attackRange: [10, 22], charClass: 'Werewolf', potions: 0},
     {name: 'Skeleton', healthRange: [40,48], attackRange: [12, 20], charClass: 'Skeleton', potions: 0},
 ];
+
+const enemyBehaviors = {
+    Werewolf: { doubleAttack: true },
+    Skeleton: { counterChance: 0.35 },
+    Gorgon: { poisonChance: 0.4 },
+    Magician: { siphonChance: 0.35 },
+};
 
 const bossTemplate = {
     name: 'Ignis, The Beacon of False Hope',
@@ -405,31 +462,53 @@ async function startEncounter(enemy){
     toggleButtons(false);
 }
 
+async function handlePlayerDefeat() {
+    await writeSlowly(`Defeat! ${player.name} has fallen in battle.`);
+    battleScreen.style.display = 'none';
+    defeatMessage.textContent = `${player.name} the ${player.charClass} fell after defeating ${enemiesDefeated} foe${enemiesDefeated === 1 ? '' : 's'}. Better luck next time.`;
+    defeatScreen.style.display = 'block';
+}
+
 async function enemyTurn(){
     await sleep(enemy_attack_delay);
+
+    await player.tickPoison();
+    if (player.health <= 0) {
+        await handlePlayerDefeat();
+        return;
+    }
+
     const healthPercentage = currentEnemy.health / currentEnemy.maxHealth;
+    const behavior = enemyBehaviors[currentEnemy.charClass];
+
     let decidedToHeal = false;
-    if (healthPercentage < 0.3 && currentEnemy.potions > 0){
-        if (Math.random() < 0.75) {
-            decidedToHeal = true;
+    let decidedToSiphon = false;
+
+    if (healthPercentage < 0.3 && currentEnemy.potions > 0 && Math.random() < 0.75) {
+        decidedToHeal = true;
+    } else if (behavior?.siphonChance) {
+        const needsHealth = healthPercentage < 0.6; // hurting enough to want to drain
+        const randomSpecial = Math.random() < behavior.siphonChance;
+        if (needsHealth || randomSpecial) {
+            decidedToSiphon = true;
         }
     }
+
     if (decidedToHeal) {
         const healingAmount = getRandomInt(15, 25);
         currentEnemy.health = Math.min(currentEnemy.health + healingAmount, currentEnemy.maxHealth);
         currentEnemy.potions -= 1;
         currentEnemy.pendingDamageEffect = `+${healingAmount}`;
         await writeSlowly(`${currentEnemy.name} drank a potion, restoring ${healingAmount} HP!`);
+    } else if (decidedToSiphon) {
+        await currentEnemy.siphon(player);
     } else {
         await currentEnemy.attack(player);
     }
     updateBattleUI();
 
     if (player.health <= 0){
-                await writeSlowly(`Defeat! ${player.name} has fallen in battle.`);
-        battleScreen.style.display = 'none';
-        defeatMessage.textContent = `${player.name} the ${player.charClass} fell after defeating ${enemiesDefeated} foe${enemiesDefeated === 1 ? '' : 's'}. Better luck next time.`;
-        defeatScreen.style.display = 'block';
+        await handlePlayerDefeat();
     }
     else {
         toggleButtons(false);
@@ -645,3 +724,4 @@ function shakeScreen() {
     void canvasEl.offsetWidth; // force reflow so the animation restarts cleanly
     canvasEl.classList.add('shake');
 }
+

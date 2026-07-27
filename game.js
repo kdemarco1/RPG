@@ -2,6 +2,17 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 const damagePopUps = [];
+const siphonEffects = [];
+
+function spawnSiphonEffect(fromActor, toActor, duration = 50) {
+    siphonEffects.push({
+        fromActor,
+        toActor,
+        life: duration,
+        maxLife: duration,
+        phase: Math.random() * Math.PI * 2
+    });
+}
 
 function updateAnimation(actor) {
     if (actor.frameIndex === undefined) {
@@ -194,8 +205,8 @@ function getSpriteHeight(actor) {
 
 function drawHealthBar(actor, hpPercent, yOffset) {
 
-    const width = GAME_CONFIG.ui.healthBarWidth;
-    const height = GAME_CONFIG.ui.healthBarHeight;
+    const width = actor.isBoss ? GAME_CONFIG.ui.healthBarWidth * 2 : GAME_CONFIG.ui.healthBarWidth;
+    const height = actor.isBoss ? GAME_CONFIG.ui.healthBarHeight * 1.5 : GAME_CONFIG.ui.healthBarHeight;
 
     ctx.save();
     ctx.translate(actor.x, actor.y + yOffset);
@@ -211,6 +222,7 @@ function drawHealthBar(actor, hpPercent, yOffset) {
     ctx.fillRect(x, y, width * hpPercent, height);
 
     ctx.strokeStyle = "#7f8c8d";
+    ctx.lineWidth = actor.isBoss ? 2 : 1;
     ctx.strokeRect(x, y, width, height);
 
     ctx.restore();
@@ -330,6 +342,55 @@ function gameLoop() {
         ctx.fillText(popup.text, popup.x, popup.y);
         ctx.restore();
     }
+
+    for (let i = siphonEffects.length - 1; i >= 0; i--) {
+        const effect = siphonEffects[i];
+        effect.life--;
+
+        if (effect.life <= 0 || !effect.fromActor || !effect.toActor) {
+            siphonEffects.splice(i, 1);
+            continue;
+        }
+
+        const progress = 1 - effect.life / effect.maxLife;
+        const alpha = Math.sin(progress * Math.PI);
+
+        const fromPos = getHealthBarCenter(effect.fromActor);
+        const toPos = getHealthBarCenter(effect.toActor);
+        const x1 = fromPos.x;
+        const y1 = fromPos.y;
+        const x2 = toPos.x;
+        const y2 = toPos.y;
+
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const length = Math.sqrt(dx * dx + dy * dy) || 1;
+        const nx = -dy / length;
+        const ny = dx / length;
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = '#2ecc71';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#2ecc71';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+
+        const segments = 24;
+        for (let s = 0; s <= segments; s++) {
+            const t = s / segments;
+            const baseX = x1 + dx * t;
+            const baseY = y1 + dy * t;
+            const taper = Math.sin(t * Math.PI);
+            const wave = Math.sin(t * Math.PI * 4 + effect.phase + progress * 12) * 10 * taper;
+            const px = baseX + nx * wave;
+            const py = baseY + ny * wave;
+            if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        ctx.restore();
+    }
+
     requestAnimationFrame(gameLoop);
 }
 
@@ -356,4 +417,17 @@ function spawnDamagePopup(x, y, amount, isPlayer) {
         life: GAME_CONFIG.popup.lifetime
     });
 }
+
+function getHealthBarCenter(actor) {
+    const width = actor.isBoss ? GAME_CONFIG.ui.healthBarWidth * 2 : GAME_CONFIG.ui.healthBarWidth;
+    const height = actor.isBoss ? GAME_CONFIG.ui.healthBarHeight * 1.5 : GAME_CONFIG.ui.healthBarHeight;
+    const spriteHeight = getSpriteHeight(actor);
+    const barTopY = -(spriteHeight + 8);
+
+    return {
+        x: actor.x,
+        y: actor.y + barTopY + height / 2
+    };
+}
+
 gameLoop();

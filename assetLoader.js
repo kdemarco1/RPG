@@ -148,9 +148,9 @@ window.animConfig = {
         defending: { frames: 2, speed: 50, visualHeight: 150, offsetX: 55 }
     },
     Boss: {
-        idle: { frames: 7, speed: 20, visualHeight: 150},
-        attacking: { frames: 4, speed: 15, visualHeight: 150},
-        hurt: { frames: 3, speed: 50, visualHeight: 150},
-        dead: { frames: 5, speed: 8, visualHeight: 150}
+        idle: { frames: 7, speed: 20, visualHeight: 150, offsetX: 10},
+        attacking: { frames: 4, speed: 15, visualHeight: 150, offsetX: 10},
+        hurt: { frames: 3, speed: 50, visualHeight: 150, offsetX: 10},
+        dead: { frames: 5, speed: 8, visualHeight: 150, offsetX: 10}
     }
 };

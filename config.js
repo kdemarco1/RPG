@@ -21,7 +21,7 @@ const GAME_CONFIG = {
         breathingAmplitude: 5,
         returnSpeed: 0.2,
         deathTime: 45,
-        bossScale: 1.6
+        bossScale: 2
     },
 
     ui: {

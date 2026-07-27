@@ -44,6 +44,10 @@
 
     <div id="log">
     </div>
+        <div id="playerStatsBar">
+        <span id="playerLevelLabel">Level 1</span>
+        <div class="xpBar"><div id="playerXpFill"></div></div>
+    </div>
     <div id="actions">
         <button id="attackButton">⚔️ Attack</button>
         <button id="defendButton">🛡️ Defend</button>
@@ -58,9 +62,10 @@
     </section>
     <section id="victoryScreen" style="display: none;">
         <div id="confettiContainer"></div>
-        <h2>🏆 Victory! 🏆</h2>
+        <h2>🏆 Boss Defeated! 🏆</h2>
         <p id="victoryMessage"></p>
-        <button id="victoryPlayAgainButton">Play Again</button>
+        <button id="continueAdventureButton">⚔️ Continue Adventure</button>
+        <button id="victoryPlayAgainButton">🏁 Stop Here</button>
     </section>
     <section id="defeatScreen" style="display: none;">
         <h2>💀 Defeat 💀</h2>
@@ -72,12 +77,19 @@
         <p id="fleeMessage"></p>
         <button id="fleePlayAgainButton">Play Again</button>
     </section>
+    <div id="levelUpOverlay" style="display: none;">
+        <div id="levelUpBox">
+            <h3>⭐ Level Up! Choose a bonus: ⭐</h3>
+            <button id="chooseAttackButton">⚔️ Boost Attack</button>
+            <button id="chooseDefenseButton">🛡️ Boost Defense</button>
+            <button id="chooseHealButton">❤️ Full Heal</button>
+        </div>
+    </div>
     </div>
     <script src="config.js"></script>
     <script src="assetLoader.js"></script>
     <script src="backgroundManager.js"></script>
     <script src="rpg.js"></script>
     <script src="game.js"></script>
-
 </body>
 </html>

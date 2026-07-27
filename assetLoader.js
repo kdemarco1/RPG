@@ -75,7 +75,12 @@ const portraits = {
             hurt: 'images/sprites/skeleton/Hurt.png',
             dead: 'images/sprites/skeleton/Dead.png'
         },
-        Boss: '🐉'
+        Boss: {
+            idle: 'images/sprites/boss/Idle.png',
+            attacking: 'images/sprites/boss/Attack.png',
+            hurt: 'images/sprites/boss/Hurt.png',
+            dead: 'images/sprites/boss/Dead.png'
+        }
 };
 const loadedSprites = {};
 for (const charKey in portraits) {
@@ -131,7 +136,7 @@ window.animConfig = {
     },
     Gorgon: {
         idle: { frames: 7, speed: 20, visualHeight: 180 },
-        attacking: { frames: 7, speed: 15, visualHeight: 180 },
+        attacking: { frames: 7, speed: 5, visualHeight: 180 },
         hurt: { frames: 3, speed: 50, visualHeight: 180 },
         dead: { frames: 3, speed: 50, visualHeight: 180 }
     },
@@ -141,5 +146,11 @@ window.animConfig = {
         hurt: { frames: 3, speed: 50, visualHeight: 150, offsetX: 55 },
         dead: { frames: 6, speed: 8, visualHeight: 150, offsetX: 55 },
         defending: { frames: 2, speed: 50, visualHeight: 150, offsetX: 55 }
+    },
+    Boss: {
+        idle: { frames: 7, speed: 20, visualHeight: 150},
+        attacking: { frames: 4, speed: 15, visualHeight: 150},
+        hurt: { frames: 3, speed: 50, visualHeight: 150},
+        dead: { frames: 5, speed: 8, visualHeight: 150}
     }
 };

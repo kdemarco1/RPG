@@ -19,6 +19,15 @@ const beginAdventureButton = document.getElementById('beginAdventureButton');
 const attackButton = document.getElementById('attackButton');
 const defendButton = document.getElementById('defendButton');
 const healButton = document.getElementById('healButton');
+const victoryScreen = document.getElementById('victoryScreen');
+const victoryMessage = document.getElementById('victoryMessage');
+const victoryPlayAgainButton = document.getElementById('victoryPlayAgainButton');
+const defeatScreen = document.getElementById('defeatScreen');
+const defeatMessage = document.getElementById('defeatMessage');
+const defeatPlayAgainButton = document.getElementById('defeatPlayAgainButton');
+const fleeScreen = document.getElementById('fleeScreen');
+const fleeMessage = document.getElementById('fleeMessage');
+const fleePlayAgainButton = document.getElementById('fleePlayAgainButton');
 
 // Game Stats
 let selectedClass = '';
@@ -318,9 +327,10 @@ async function enemyTurn(){
     updateBattleUI();
 
     if (player.health <= 0){
-        await writeSlowly(`Defeat! ${player.name} has fallen in battle. Game over`);
-        showActionButtons(false);
-        document.getElementById('playAgainButton').style.display = 'inline-block';
+                await writeSlowly(`Defeat! ${player.name} has fallen in battle.`);
+        battleScreen.style.display = 'none';
+        defeatMessage.textContent = `${player.name} the ${player.charClass} fell after defeating ${enemiesDefeated} foe${enemiesDefeated === 1 ? '' : 's'}. Better luck next time.`;
+        defeatScreen.style.display = 'block';
     }
     else {
         toggleButtons(false);
@@ -336,11 +346,10 @@ async function handleEnemyDefeat(){
         showActionButtons(false);
         document.getElementById('choiceButtons').style.display = 'block';
     } else {
-        await writeSlowly(`All enemies have been defeated! Congratulations ${player.name}, you win!`);
-        document.getElementById('attackButton').style.display = 'none';
-        document.getElementById('defendButton').style.display = 'none';
-        document.getElementById('healButton').style.display = 'none';
-        document.getElementById('playAgainButton').style.display = 'inline-block';
+        battleScreen.style.display = 'none';
+        victoryMessage.textContent = `Congratulations, ${player.name}! You have defeated all ${max_enemies} foes and completed your adventure as a ${player.charClass}!`;
+        victoryScreen.style.display = 'block';
+        launchConfetti();
     }
 }
 
@@ -404,6 +413,10 @@ healButton.addEventListener('click', async () => {
 
 function resetGame() {
     battleScreen.style.display = 'none';
+    victoryScreen.style.display = 'none';
+    defeatScreen.style.display = 'none';
+    fleeScreen.style.display = 'none';
+    document.getElementById('confettiContainer').innerHTML = '';
     startScreen.style.display = '';
     document.getElementById('playAgainButton').style.display = 'none';
     document.getElementById('choiceButtons').style.display = 'none';
@@ -418,3 +431,31 @@ function resetGame() {
 }
 
 document.getElementById('playAgainButton').addEventListener('click', resetGame);
+victoryPlayAgainButton.addEventListener('click', resetGame);
+defeatPlayAgainButton.addEventListener('click', resetGame);
+fleePlayAgainButton.addEventListener('click', resetGame);
+
+const confettiColors = ['#f1c40f', '#e74c3c', '#2ecc71', '#3498db', '#9b59b6', '#ffffff'];
+
+function launchConfetti(pieceCount = 80) {
+    const container = document.getElementById('confettiContainer');
+    container.innerHTML = ''; // clear any leftover pieces
+
+    for (let i = 0; i < pieceCount; i++) {
+        const piece = document.createElement('div');
+        piece.className = 'confetti-piece';
+        piece.style.left = `${Math.random() * 100}%`;
+        piece.style.backgroundColor = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+        piece.style.animationDuration = `${2 + Math.random() * 2}s`;
+        piece.style.animationDelay = `${Math.random() * 0.5}s`;
+        container.appendChild(piece);
+    }
+}
+
+document.getElementById('fleeButton').addEventListener('click', async () => {
+    document.getElementById('choiceButtons').style.display = 'none';
+    await writeSlowly(`${player.name} chose to flee! You live to fight another day`);
+    battleScreen.style.display = 'none';
+    fleeMessage.textContent = `${player.name} the ${player.charClass} fled after defeating ${enemiesDefeated} foe${enemiesDefeated === 1 ? '' : 's'}.`;
+    fleeScreen.style.display = 'block';
+});

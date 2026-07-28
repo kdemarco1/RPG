@@ -525,3 +525,12 @@ canvas#gameCanvas.shake {
     font-size: 14px;
     margin: 0;
 }
+
+#heroSetup input.inputError {
+    border-color: #e74c3c;
+    box-shadow: 0 0 8px rgba(231, 76, 60, 0.6);
+}
+
+#heroSetup input.inputError::placeholder {
+    color: #e74c3c;
+}

@@ -51,10 +51,11 @@ const openSettingsButton = document.getElementById('openSettingsButton');
 const settingsScreen = document.getElementById('settingsScreen');
 const closeSettingsButton = document.getElementById('closeSettingsButton');
 const textSpeedSelect = document.getElementById('textSpeedSelect');
-const difficultySelect = document.getElementById('difficultySelect');
+const difficultySelectStart = document.getElementById('difficultySelectStart');
 const screenShakeToggle = document.getElementById('screenShakeToggle');
 const confettiToggle = document.getElementById('confettiToggle');
 const volumeSlider = document.getElementById('volumeSlider');
+const backToMenuButton = document.getElementById('backToMenuButton');
 
 // Game Stats
 let selectedClass = '';
@@ -105,6 +106,7 @@ function showClassInfo(className) {
     document.getElementById('portrait').textContent = info.portrait;
     document.getElementById('classDescription').textContent = info.description;
     document.getElementById('classStats').innerHTML = info.stats;
+    document.getElementById('heroSetup').style.display = 'block';
 }
 
 function updateCharacterCard() {
@@ -116,9 +118,10 @@ function updateCharacterCard() {
         <strong>${classIcon}</strong> ${player.charClass}<br><br>
         <strong>❤️ </strong> ${player.health} HP<br><br>
         <strong>⚔️ </strong> ${player.attackRange[0]}-${player.attackRange[1]}<br><br>
-        <strong>🧪 </strong> ${player.potions}`;
+        <strong>🧪 </strong> ${player.potions}<br><br>
+        <strong>🎚️ </strong> ${gameSettings.difficulty}`;
     document.getElementById("classStats").innerHTML = '';
-    confirmClassButton.style.display = "none";
+    document.getElementById("heroSetup").style.display = "none";
     beginAdventureButton.style.display = "inline-block";
     document.querySelectorAll(".classButton").forEach(button=>{button.disabled = true; });
     document.getElementById("portrait").style.display = "none";
@@ -134,13 +137,16 @@ function resetClassSelectionUI() {
 
     document.getElementById('portrait').style.display = '';
     document.getElementById('portrait').textContent = '';
-    document.getElementById('selectedTitle').textContent = 'Choose a Class';
-    document.getElementById('classDescription').textContent = 'Each character will have different health and attack power';
+    document.getElementById('selectedTitle').textContent = 'Select a class above to begin';
+    document.getElementById('classDescription').textContent = '';
     document.getElementById('classStats').innerHTML = '';
+    document.getElementById('heroSetup').style.display = 'none';
+    difficultySelectStart.value = 'normal';
 
-    confirmClassButton.style.display = 'none';
     beginAdventureButton.style.display = 'none';
     nameInput.value = '';
+    nameInput.classList.remove('inputError');
+    nameInput.placeholder = 'Enter hero name';
     selectedClass = '';
     classConfirmed = false;
 }
@@ -184,21 +190,13 @@ class Character {
     }
 
     recalculateStats() {
-        const healthBonus = Math.floor(this.totalXP * 0.5);
-        const attackBonus = Math.floor(this.totalXP * 0.06);
+        const attackBonus = Math.floor(this.totalXP * 0.06) + this.bonusAttack;
 
-        const oldMaxHealth = this.maxHealth;
-        this.maxHealth = this.baseMaxHealth + healthBonus;
         this.attackRange = [
             this.baseAttackRange[0] + attackBonus,
             this.baseAttackRange[1] + attackBonus
         ];
-
-        const healthGained = this.maxHealth - oldMaxHealth;
-        if (healthGained > 0) {
-            this.health = Math.min(this.health + healthGained, this.maxHealth);
-        }
-    }
+}
 
     async applyLevelUpChoice(choice) {
         if (choice === 'attack') {
@@ -292,19 +290,24 @@ class Character {
 }
 
     async takeDamage(damageValue) {
-        this.health = Math.max(0, this.health - damageValue);
-        this.pendingDamageEffect = damageValue;
-
-        if (this.health <= 0) {
-            this.visualState = 'dead';
-            this.deathTimer = 0;
-            this.deathComplete = false;
-        } else {
-            this.visualState = 'hurt';
-            this.stateTimer = 20;
+        if (!Number.isFinite(damageValue)) {
+            console.error('NaN damage blocked!', { source: this.name, damageValue });
+            damageValue = 0;
         }
-        await writeSlowly(`${this.name}'s health is now ${this.health}`);
-    }
+        const mitigatedDamage = Math.max(1, Math.round(damageValue - this.bonusDefense));
+        this.health = Math.max(0, this.health - mitigatedDamage);
+        this.pendingDamageEffect = mitigatedDamage;
+
+            if (this.health <= 0) {
+                this.visualState = 'dead';
+                this.deathTimer = 0;
+                this.deathComplete = false;
+            } else {
+                this.visualState = 'hurt';
+                this.stateTimer = 20;
+            }
+    await writeSlowly(`${this.name}'s health is now ${this.health}`);
+}
 
     async tickPoison() {
         if (!this.poison || this.poison.turnsLeft <= 0) return;
@@ -344,8 +347,8 @@ const bossTemplate = {
 };
 
 function spawnBoss(bossNumber) {
-    const baseDifficultyMult = difficultyMultipliers[gameSettings.difficulty];
-    const scaleStep = difficultyScaleStep[gameSettings.difficulty];
+    const baseDifficultyMult = difficultyMultipliers[gameSettings.difficulty] ?? 1;
+    const scaleStep = difficultyScaleStep[gameSettings.difficulty] ?? 0.4;
     const difficultyScale = (1 + (bossNumber - 1) * scaleStep) * baseDifficultyMult;
 
     const health = Math.round(getRandomInt(bossTemplate.healthRange[0], bossTemplate.healthRange[1]) * difficultyScale);
@@ -385,7 +388,7 @@ function initPlayer(name, charClass) {
 
 function spawnRandomEnemy(){
     const template = enemyLibrary[Math.floor(Math.random() * enemyLibrary.length)];
-    const mult = difficultyMultipliers[gameSettings.difficulty];
+    const mult = difficultyMultipliers[gameSettings.difficulty] ?? 1;
     const health = Math.round(getRandomInt(template.healthRange[0], template.healthRange[1]) * mult);
     const attackRange = [
         Math.round(template.attackRange[0] * mult),
@@ -404,16 +407,29 @@ document.querySelectorAll('.classButton').forEach(button => {
         document.querySelectorAll('.classButton').forEach(b => b.classList.remove('selected'));
         button.classList.add('selected');
         showClassInfo(selectedClass);
-        confirmClassButton.style.display = 'inline-block';
-        confirmClassButton.textContent = `Confirm ${selectedClass}`;
     });
 });
 
 confirmClassButton.addEventListener('click', () => {
     if (classConfirmed || !selectedClass) return;
+
+    const trimmedName = nameInput.value.trim();
+    if (!trimmedName) {
+        nameInput.classList.add('inputError');
+        nameInput.placeholder = 'Please enter a name!';
+        nameInput.focus();
+        return;
+    }
+    nameInput.classList.remove('inputError');
+
     classConfirmed = true;
-    player = initPlayer(nameInput.value, selectedClass);
+    gameSettings.difficulty = difficultySelectStart.value;
+    player = initPlayer(trimmedName, selectedClass);
     updateCharacterCard();
+});
+
+nameInput.addEventListener('input', () => {
+    nameInput.classList.remove('inputError');
 });
 
 // Battle UI
@@ -430,11 +446,7 @@ function updateBattleUI(){
         setElementText('playerHealth', player.health);
         setElementText('playerPotions', player.potions);
         setElementText('playerLevelLabel', `Level ${player.level}`);
-        const xpFill = document.getElementById('playerXpFill');
-        if (xpFill) {
-            xpFill.style.transition = 'none';
-            xpFill.style.width = `${(player.currentLevelProgress / xp_per_level) * 100}%`;
-        }
+        updateHealButtonVisibility();
     }
     if (currentEnemy) {
         setElementText('enemyName', currentEnemy.name);
@@ -772,10 +784,6 @@ textSpeedSelect.addEventListener('change', () => {
     text_delay_multiplier = textSpeedValues[gameSettings.textSpeed];
 });
 
-difficultySelect.addEventListener('change', () => {
-    gameSettings.difficulty = difficultySelect.value;
-});
-
 screenShakeToggle.addEventListener('change', () => {
     gameSettings.screenShake = screenShakeToggle.checked;
 });
@@ -789,3 +797,19 @@ volumeSlider.addEventListener('input', () => {
     // no audio system yet — this just stores the value for when sound is added
 });
 
+backToMenuButton.addEventListener('click', () => {
+    startScreen.style.display = 'none';
+    resetClassSelectionUI();
+    mainMenu.style.display = '';
+});
+
+function updateHealButtonVisibility() {
+    healButton.style.display = player.potions > 0 ? 'inline-block' : 'none';
+}
+
+function showActionButtons(visible) {
+    const display = visible ? 'inline-block' : 'none';
+    attackButton.style.display = display;
+    defendButton.style.display = display;
+    healButton.style.display = visible && player.potions > 0 ? 'inline-block' : 'none';
+}

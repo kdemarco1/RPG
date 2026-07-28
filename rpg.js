@@ -51,10 +51,11 @@ const openSettingsButton = document.getElementById('openSettingsButton');
 const settingsScreen = document.getElementById('settingsScreen');
 const closeSettingsButton = document.getElementById('closeSettingsButton');
 const textSpeedSelect = document.getElementById('textSpeedSelect');
-const difficultySelect = document.getElementById('difficultySelect');
+const difficultySelectStart = document.getElementById('difficultySelectStart');
 const screenShakeToggle = document.getElementById('screenShakeToggle');
 const confettiToggle = document.getElementById('confettiToggle');
 const volumeSlider = document.getElementById('volumeSlider');
+const backToMenuButton = document.getElementById('backToMenuButton');
 
 // Game Stats
 let selectedClass = '';
@@ -105,6 +106,7 @@ function showClassInfo(className) {
     document.getElementById('portrait').textContent = info.portrait;
     document.getElementById('classDescription').textContent = info.description;
     document.getElementById('classStats').innerHTML = info.stats;
+    document.getElementById('heroSetup').style.display = 'block';
 }
 
 function updateCharacterCard() {
@@ -116,9 +118,10 @@ function updateCharacterCard() {
         <strong>${classIcon}</strong> ${player.charClass}<br><br>
         <strong>❤️ </strong> ${player.health} HP<br><br>
         <strong>⚔️ </strong> ${player.attackRange[0]}-${player.attackRange[1]}<br><br>
-        <strong>🧪 </strong> ${player.potions}`;
+        <strong>🧪 </strong> ${player.potions}<br><br>
+        <strong>🎚️ </strong> ${gameSettings.difficulty}`;
     document.getElementById("classStats").innerHTML = '';
-    confirmClassButton.style.display = "none";
+    document.getElementById("heroSetup").style.display = "none";
     beginAdventureButton.style.display = "inline-block";
     document.querySelectorAll(".classButton").forEach(button=>{button.disabled = true; });
     document.getElementById("portrait").style.display = "none";
@@ -134,11 +137,12 @@ function resetClassSelectionUI() {
 
     document.getElementById('portrait').style.display = '';
     document.getElementById('portrait').textContent = '';
-    document.getElementById('selectedTitle').textContent = 'Choose a Class';
-    document.getElementById('classDescription').textContent = 'Each character will have different health and attack power';
+    document.getElementById('selectedTitle').textContent = 'Select a class above to begin';
+    document.getElementById('classDescription').textContent = '';
     document.getElementById('classStats').innerHTML = '';
+    document.getElementById('heroSetup').style.display = 'none';
+    difficultySelectStart.value = 'normal';
 
-    confirmClassButton.style.display = 'none';
     beginAdventureButton.style.display = 'none';
     nameInput.value = '';
     selectedClass = '';
@@ -404,14 +408,13 @@ document.querySelectorAll('.classButton').forEach(button => {
         document.querySelectorAll('.classButton').forEach(b => b.classList.remove('selected'));
         button.classList.add('selected');
         showClassInfo(selectedClass);
-        confirmClassButton.style.display = 'inline-block';
-        confirmClassButton.textContent = `Confirm ${selectedClass}`;
     });
 });
 
 confirmClassButton.addEventListener('click', () => {
     if (classConfirmed || !selectedClass) return;
     classConfirmed = true;
+    gameSettings.difficulty = difficultySelectStart.value;
     player = initPlayer(nameInput.value, selectedClass);
     updateCharacterCard();
 });
@@ -772,10 +775,6 @@ textSpeedSelect.addEventListener('change', () => {
     text_delay_multiplier = textSpeedValues[gameSettings.textSpeed];
 });
 
-difficultySelect.addEventListener('change', () => {
-    gameSettings.difficulty = difficultySelect.value;
-});
-
 screenShakeToggle.addEventListener('change', () => {
     gameSettings.screenShake = screenShakeToggle.checked;
 });
@@ -787,5 +786,11 @@ confettiToggle.addEventListener('change', () => {
 volumeSlider.addEventListener('input', () => {
     gameSettings.soundVolume = parseInt(volumeSlider.value, 10);
     // no audio system yet — this just stores the value for when sound is added
+});
+
+backToMenuButton.addEventListener('click', () => {
+    startScreen.style.display = 'none';
+    resetClassSelectionUI();
+    mainMenu.style.display = '';
 });
 

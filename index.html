@@ -30,14 +30,6 @@
                     </select>
                 </div>
                 <div class="settingRow">
-                    <label for="difficultySelect">Difficulty</label>
-                    <select id="difficultySelect">
-                        <option value="easy">Easy</option>
-                        <option value="normal" selected>Normal</option>
-                        <option value="hard">Hard</option>
-                    </select>
-                </div>
-                <div class="settingRow">
                     <label for="screenShakeToggle">Screen Shake</label>
                     <input type="checkbox" id="screenShakeToggle" checked>
                 </div>
@@ -54,26 +46,45 @@
         </section>
         <!-- Character Creation -->
         <section id="startScreen" style="display: none;">
-            <h2>Create Your Hero</h2>
-            <div id="creationArea">
-                <div id="classInfo">
-                    <h2 id="selectedTitle">Choose a Class</h2>
-                    <div id="portrait">
-                    </div>
-                    <div id="classDescription">Each character will have different health and attack power</div>
-                    <p id="classStats"></p>
-                    <button id="confirmClassButton">Confirm Class</button>
-                    <button id="beginAdventureButton">Begin Adventure</button>
-                </div>
-                
-                <div id="creationControls">
-                    <label>Character Name:</label>
+            <button id="backToMenuButton">⬅ Back</button>
+            <h2>Choose Your Class</h2>
+
+            <div id="classRow">
+                <button class="classButton" data-class="Knight">
+                    <span class="classIcon">🗡️</span>
+                    <span class="classLabel">Knight</span>
+                </button>
+                <button class="classButton" data-class="Magician">
+                    <span class="classIcon">🧙🏼‍♂️</span>
+                    <span class="classLabel">Magician</span>
+                </button>
+                <button class="classButton" data-class="Samurai">
+                    <span class="classIcon">🥷🏻</span>
+                    <span class="classLabel">Samurai</span>
+                </button>
+            </div>
+
+            <div id="classInfo">
+                <h2 id="selectedTitle">Select a class above to begin</h2>
+                <div id="portrait"></div>
+                <div id="classDescription"></div>
+                <p id="classStats"></p>
+
+                <div id="heroSetup" style="display: none;">
+                    <label for="nameInput">Character Name</label>
                     <input id="nameInput" type="text" placeholder="Enter hero name">
-                    <h3>Select Class</h3>
-                    <button class="classButton" data-class="Knight"> Knight</button>
-                    <button class="classButton" data-class="Magician">Magician</button>
-                    <button class="classButton" data-class="Samurai">Samurai</button>
+
+                    <label for="difficultySelectStart">Difficulty</label>
+                    <select id="difficultySelectStart">
+                        <option value="easy">Easy</option>
+                        <option value="normal" selected>Normal</option>
+                        <option value="hard">Hard</option>
+                    </select>
+
+                    <button id="confirmClassButton">⚔️ Confirm Class</button>
                 </div>
+
+                <button id="beginAdventureButton">🛡️ Begin Adventure</button>
             </div>
         </section>
 

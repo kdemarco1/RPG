@@ -4,6 +4,16 @@ ctx.imageSmoothingEnabled = false;
 const damagePopUps = [];
 const siphonEffects = [];
 
+function easeOutBack(t) {
+    const c1 = 1.70158;
+    const c3 = c1 + 1;
+    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+
+function easeOutQuad(t) {
+    return 1 - (1 - t) * (1 - t);
+}
+
 function spawnSiphonEffect(fromActor, toActor, duration = 50) {
     siphonEffects.push({
         fromActor,
@@ -97,19 +107,35 @@ function updateDamageEffects(actor) {
 
 function updateMovement(actor, target) {
     if (actor.visualState === "attacking" && target) {
-        actor.x = actor.baseX + (target.baseX - actor.baseX) * GAME_CONFIG.actor.lungeFactor;
+        if (actor.stateTimer === undefined) actor.stateTimer = 0;
+        const attackConfig = window.animConfig?.[actor.charClass]?.attacking;
+        const totalDuration = attackConfig ? attackConfig.frames * attackConfig.speed : 15;
+        const elapsed = totalDuration - actor.stateTimer;
+        const progress = Math.min(1, elapsed / totalDuration);
+
+        const anticipation = 0.15; // first 15% pulls back slightly
+        let lungeAmount;
+        if (progress < anticipation) {
+            const t = progress / anticipation;
+            lungeAmount = -0.08 * Math.sin(t * Math.PI); // small pull-back
+        } else {
+            const t = (progress - anticipation) / (1 - anticipation);
+            lungeAmount = easeOutBack(Math.min(1, t)) * GAME_CONFIG.actor.lungeFactor;
+        }
+
+        actor.x = actor.baseX + (target.baseX - actor.baseX) * lungeAmount;
     } else if (actor.visualState === "dead") {
         actor.x = actor.baseX;
         actor.y = actor.baseY + Math.min(actor.deathTimer || 0, 40);
     } else if (actor.visualState === "hurt") {
         actor.x = actor.baseX + (Math.random() - 0.5) * GAME_CONFIG.actor.shakeIntensity;
         actor.y = actor.baseY;
-    } else if (actor.visualState === "dead") {
-        actor.x = actor.baseX;
     } else {
-        actor.x += (actor.baseX - actor.x) * GAME_CONFIG.actor.returnSpeed;
+        const dx = actor.baseX - actor.x;
+        actor.x += dx * GAME_CONFIG.actor.returnSpeed;
         if (typeof portraits[actor.charClass] === "string") {
-            const bob = Math.sin(performance.now() * GAME_CONFIG.actor.breathingSpeed) * GAME_CONFIG.actor.breathingAmplitude;
+            if (actor.bobPhase === undefined) actor.bobPhase = Math.random() * 1000;
+            const bob = Math.sin((performance.now() + actor.bobPhase) * GAME_CONFIG.actor.breathingSpeed) * GAME_CONFIG.actor.breathingAmplitude;
             actor.y += (actor.baseY + bob - actor.y) * GAME_CONFIG.actor.returnSpeed;
         } else {
             actor.y += (actor.baseY - actor.y) * GAME_CONFIG.actor.returnSpeed;
@@ -119,6 +145,10 @@ function updateMovement(actor, target) {
 
 function updateActor(actor, target) {
     if (!actor || actor.deathComplete) return;
+    if (actor.displayedHealth === undefined) actor.displayedHealth = actor.health;
+    actor.displayedHealth += (actor.health - actor.displayedHealth) * 0.15;
+    if (Math.abs(actor.displayedHealth - actor.health) < 0.5) actor.displayedHealth = actor.health;
+
     updateAnimation(actor);
     updateState(actor);
     updateDamageEffects(actor);
@@ -154,8 +184,23 @@ function drawSprite(actor, spriteAlpha, scale, rotation, yOffset) {
 
     ctx.rotate(rotation);
 
+    let scaleX = scale;
+    let scaleY = scale;
+
+    if (actor.visualState === "hurt" && actor.health > 0) {
+        if (actor.stateTimer === undefined) actor.stateTimer = 0;
+        const hurtProgress = 1 - (actor.stateTimer / 20); // stateTimer set to 20 on hurt
+        const squash = Math.sin(Math.min(1, hurtProgress) * Math.PI) * 0.15;
+        scaleX = scale * (1 + squash);
+        scaleY = scale * (1 - squash);
+    } else if (actor.visualState === "defending" || actor.isDefending) {
+        const pulse = Math.sin(performance.now() * 0.006) * 0.03;
+        scaleX = scale * (1 + pulse);
+        scaleY = scale * (1 - pulse);
+    }
+
     const shouldFlip = Boolean(actor.isEnemy);
-    ctx.scale(scale * (shouldFlip ? -1 : 1), scale);
+    ctx.scale(scaleX * (shouldFlip ? -1 : 1), scaleY);
 
     ctx.globalAlpha = spriteAlpha;
 
@@ -287,7 +332,7 @@ function drawActor(actor) {
     if (actor.health <= 0)
         return;
     const hpPercent =
-        actor.health / actor.maxHealth;
+        (actor.displayedHealth ?? actor.health) / actor.maxHealth;
     drawHealthBar(
         actor,
         hpPercent,

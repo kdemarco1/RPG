@@ -4,12 +4,22 @@
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const enemy_attack_delay = 1000;
 const next_foe_delay= 1800;
-const text_delay_multiplier = 35;
+let text_delay_multiplier = 35;
 const max_text_delay = 4000;
 const boss_interval = 3;
 let bossesDefeated = 0;
 const character_lift = 40;
 const xp_per_level = 30;
+const gameSettings = {
+    textSpeed: 'normal',
+    difficulty: 'normal',
+    screenShake: true,
+    confetti: true,
+    soundVolume: 50
+};
+const textSpeedValues = { slow: 55, normal: 35, fast: 15 };
+const difficultyMultipliers = { easy: 0.8, normal: 1, hard: 1.3 };
+const difficultyScaleStep = { easy: 0.2, normal: 0.4, hard: 0.55 };
 
 // DOM References
 const startScreen = document.getElementById('startScreen');
@@ -35,6 +45,16 @@ const chooseAttackButton = document.getElementById('chooseAttackButton');
 const chooseDefenseButton = document.getElementById('chooseDefenseButton');
 const chooseHealButton = document.getElementById('chooseHealButton');
 const continueAdventureButton = document.getElementById('continueAdventureButton');
+const mainMenu = document.getElementById('mainMenu');
+const startGameMenuButton = document.getElementById('startGameMenuButton');
+const openSettingsButton = document.getElementById('openSettingsButton');
+const settingsScreen = document.getElementById('settingsScreen');
+const closeSettingsButton = document.getElementById('closeSettingsButton');
+const textSpeedSelect = document.getElementById('textSpeedSelect');
+const difficultySelect = document.getElementById('difficultySelect');
+const screenShakeToggle = document.getElementById('screenShakeToggle');
+const confettiToggle = document.getElementById('confettiToggle');
+const volumeSlider = document.getElementById('volumeSlider');
 
 // Game Stats
 let selectedClass = '';
@@ -324,7 +344,9 @@ const bossTemplate = {
 };
 
 function spawnBoss(bossNumber) {
-    const difficultyScale = 1 + (bossNumber - 1) * 0.25;
+    const baseDifficultyMult = difficultyMultipliers[gameSettings.difficulty];
+    const scaleStep = difficultyScaleStep[gameSettings.difficulty];
+    const difficultyScale = (1 + (bossNumber - 1) * scaleStep) * baseDifficultyMult;
 
     const health = Math.round(getRandomInt(bossTemplate.healthRange[0], bossTemplate.healthRange[1]) * difficultyScale);
     const attackRange = [
@@ -363,9 +385,13 @@ function initPlayer(name, charClass) {
 
 function spawnRandomEnemy(){
     const template = enemyLibrary[Math.floor(Math.random() * enemyLibrary.length)];
-    const health = getRandomInt(template.healthRange[0], template.healthRange[1]);
-    const enemyPotions = template.potions;
-    const enemy = new Character(template.name, health, template.attackRange, template.charClass, template.potions);
+    const mult = difficultyMultipliers[gameSettings.difficulty];
+    const health = Math.round(getRandomInt(template.healthRange[0], template.healthRange[1]) * mult);
+    const attackRange = [
+        Math.round(template.attackRange[0] * mult),
+        Math.round(template.attackRange[1] * mult)
+    ];
+    const enemy = new Character(template.name, health, attackRange, template.charClass, template.potions);
     enemy.isEnemy = true;
     return enemy;
 }
@@ -538,7 +564,7 @@ async function handleEnemyDefeat(){
         battleScreen.style.display = 'none';
         victoryMessage.textContent = `${player.name} the ${player.charClass} has slain ${bossesDefeated === 1 ? 'the boss' : `${bossesDefeated} bosses`} and ${enemiesDefeated} foes total, reaching Level ${player.level}! Will you push onward, or bank this victory and rest?`;
         victoryScreen.style.display = 'block';
-        launchConfetti();
+        if (gameSettings.confetti) launchConfetti(); // <-- this line is the only change
     } else {
         writeSlowly(`Will you challenge the next foe or flee?`);
         showActionButtons(false);
@@ -611,7 +637,8 @@ function resetGame() {
     defeatScreen.style.display = 'none';
     fleeScreen.style.display = 'none';
     document.getElementById('confettiContainer').innerHTML = '';
-    startScreen.style.display = '';
+    startScreen.style.display = 'none';
+    mainMenu.style.display = '';
     document.getElementById('choiceButtons').style.display = 'none';
     logBox.innerHTML = '';
 
@@ -720,8 +747,45 @@ continueAdventureButton.addEventListener('click', async () => {
 
 function shakeScreen() {
     const canvasEl = document.getElementById('gameCanvas');
-    canvasEl.classList.remove('shake'); // reset in case it's still mid-animation
-    void canvasEl.offsetWidth; // force reflow so the animation restarts cleanly
+    canvasEl.classList.remove('shake');
+    void canvasEl.offsetWidth;
     canvasEl.classList.add('shake');
 }
+
+startGameMenuButton.addEventListener('click', () => {
+    mainMenu.style.display = 'none';
+    startScreen.style.display = '';
+});
+
+openSettingsButton.addEventListener('click', () => {
+    mainMenu.style.display = 'none';
+    settingsScreen.style.display = '';
+});
+
+closeSettingsButton.addEventListener('click', () => {
+    settingsScreen.style.display = 'none';
+    mainMenu.style.display = '';
+});
+
+textSpeedSelect.addEventListener('change', () => {
+    gameSettings.textSpeed = textSpeedSelect.value;
+    text_delay_multiplier = textSpeedValues[gameSettings.textSpeed];
+});
+
+difficultySelect.addEventListener('change', () => {
+    gameSettings.difficulty = difficultySelect.value;
+});
+
+screenShakeToggle.addEventListener('change', () => {
+    gameSettings.screenShake = screenShakeToggle.checked;
+});
+
+confettiToggle.addEventListener('change', () => {
+    gameSettings.confetti = confettiToggle.checked;
+});
+
+volumeSlider.addEventListener('input', () => {
+    gameSettings.soundVolume = parseInt(volumeSlider.value, 10);
+    // no audio system yet — this just stores the value for when sound is added
+});
 

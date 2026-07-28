@@ -12,8 +12,49 @@
 
     <div id="game">
         <h1>⚔️ Welcome to Simple RPG! ⚔️</h1>
+                <!-- Main Menu -->
+        <section id="mainMenu">
+            <h2>A tale of steel and sorcery awaits</h2>
+            <button id="startGameMenuButton">▶️ Start Game</button>
+            <button id="openSettingsButton">⚙️ Settings</button>
+        </section>
+        <!-- Settings -->
+        <section id="settingsScreen" style="display: none;">
+            <h2>⚙️ Settings</h2>
+            <div id="settingsControls">
+                <div class="settingRow">
+                    <label for="textSpeedSelect">Text Speed</label>
+                    <select id="textSpeedSelect">
+                        <option value="slow">Slow</option>
+                        <option value="normal" selected>Normal</option>
+                        <option value="fast">Fast</option>
+                    </select>
+                </div>
+                <div class="settingRow">
+                    <label for="difficultySelect">Difficulty</label>
+                    <select id="difficultySelect">
+                        <option value="easy">Easy</option>
+                        <option value="normal" selected>Normal</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                <div class="settingRow">
+                    <label for="screenShakeToggle">Screen Shake</label>
+                    <input type="checkbox" id="screenShakeToggle" checked>
+                </div>
+                <div class="settingRow">
+                    <label for="confettiToggle">Victory Confetti</label>
+                    <input type="checkbox" id="confettiToggle" checked>
+                </div>
+                <div class="settingRow">
+                    <label for="volumeSlider">Sound Volume</label>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="50">
+                </div>
+            </div>
+            <button id="closeSettingsButton">⬅ Back</button>
+        </section>
         <!-- Character Creation -->
-        <section id="startScreen">
+        <section id="startScreen" style="display: none;">
             <h2>Create Your Hero</h2>
             <div id="creationArea">
                 <div id="classInfo">

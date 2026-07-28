@@ -14,12 +14,19 @@ body {
 #game {
     width: 100%;
     max-width: 800px;
-    background: #262626;
     box-sizing: border-box;
     text-align: center;
     padding: 20px;
-    border-radius: 20px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+h1 {
+    text-align: center;
+    padding: 1px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 0, 0, 0.6);
+}
+
+h2, h3 {
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
 }
 
 canvas#gameCanvas {
@@ -31,19 +38,13 @@ canvas#gameCanvas {
     border-radius: 8px;
     box-shadow: 0 0 15px rgba(76, 29, 149, 0.5);
     background-color: #1b2631;
-    display: block;
-}
-
-h1 {
-    text-align: center;
-    padding: 1px;
 }
 
 #log {
     margin: 15px 0;
     height: auto;
     line-height: 40px;
-    background-color: #1a1a1a;
+    background-color: rgba(26, 26, 26, 0.85);
     color: #00ff00;
     overflow: hidden;
     padding: 16px 20px;
@@ -59,21 +60,70 @@ h1 {
     word-break: break-word;
     overflow-wrap: break-word;
     overflow: visible;
+    backdrop-filter: blur(2px);
 }
 
+/* Buttons — redesigned */
 button {
-    padding: 12px 20px;
-    margin: 5px;
+    padding: 13px 24px;
+    margin: 6px;
     font-size: 16px;
     font-weight: bold;
     cursor: pointer;
-    border-radius: 6px;
-    border: none;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
     touch-action: manipulation;
+    background: linear-gradient(180deg, #3a3a3a 0%, #232323 100%);
+    color: #f0f0f0;
+    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.5), 0 4px 10px rgba(0, 0, 0, 0.4);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
 }
 
 button:hover {
-    transform: scale(1.05);
+    transform: translateY(-2px);
+    background: linear-gradient(180deg, #474747 0%, #2a2a2a 100%);
+    box-shadow: 0 5px 0 rgba(0, 0, 0, 0.5), 0 8px 14px rgba(0, 0, 0, 0.45);
+}
+
+button:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: default;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Gold "primary action" buttons */
+#startGameMenuButton,
+#openSettingsButton,
+#continueAdventureButton,
+#victoryPlayAgainButton,
+#defeatPlayAgainButton,
+#fleePlayAgainButton,
+#beginAdventureButton,
+#confirmClassButton,
+button.primary {
+    background: linear-gradient(180deg, #ffe066 0%, #d4a900 100%);
+    color: #1a1a1a;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 3px 0 rgba(150, 110, 0, 0.6), 0 4px 12px rgba(212, 169, 0, 0.35);
+}
+
+#startGameMenuButton:hover,
+#openSettingsButton:hover,
+#continueAdventureButton:hover,
+#victoryPlayAgainButton:hover,
+#defeatPlayAgainButton:hover,
+#fleePlayAgainButton:hover,
+#beginAdventureButton:hover,
+#confirmClassButton:hover,
+button.primary:hover {
+    background: linear-gradient(180deg, #fff0a0 0%, #e0b400 100%);
+    box-shadow: 0 5px 0 rgba(150, 110, 0, 0.6), 0 8px 16px rgba(212, 169, 0, 0.45);
 }
 
 #characters {
@@ -86,53 +136,51 @@ button:hover {
     margin-top: 20px;
 }
 
-#creationArea{
-    display:flex;
-    gap:40px;
+#creationArea {
+    display: flex;
+    gap: 40px;
+    background: rgba(20, 20, 20, 0.55);
+    border-radius: 14px;
+    padding: 20px;
+    backdrop-filter: blur(2px);
 }
 
-
-#classInfo{
+#classInfo {
     width: 300px;
-    text-align:left;
+    text-align: left;
     padding: 16px;
     max-width: 500px;
 }
 
-
-#creationControls{
-    flex:1;
+#creationControls {
+    flex: 1;
 }
 
-
-#portrait{
-    font-size:40px;
-    margin:20px;
+#portrait {
+    font-size: 40px;
+    margin: 20px;
 }
 
-#classDescription{
+#classDescription {
     font-size: 14px;
 }
 
-
-.classButton.selected{
-    background:gold;
-    color:black;
-    border: 3px solid white;
-    transform: scale(1.05);
+.classButton.selected {
+    background: linear-gradient(180deg, #ffe066 0%, #d4a900 100%);
+    color: black;
+    border: 2px solid white;
 }
 
-#confirmClassButton{
+#confirmClassButton {
     display: none;
-    padding: 12px 20px;
 }
 
-#beginAdventureButton{
+#beginAdventureButton {
     display: none;
     margin-top: 15px;
 }
 
-.healthBar{
+.healthBar {
     width: 100%;
     height: 20px;
     background-color: #333;
@@ -141,36 +189,24 @@ button:hover {
     overflow: hidden;
 }
 
-#playerHealthBar, #enemyHealthBar{
+#playerHealthBar, #enemyHealthBar {
     height: 100%;
     width: 100%;
     background-color: #2ecc71;
     transition: width 0.5s ease-in-out;
 }
 
-#canvas-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: #111;
-    border: 3px solid #34495e;
-    border-radius: 8px;
-    padding: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-}
-
 body::before {
     content: "";
     position: fixed;
-    inset: -6%; /* oversized so the sway never reveals an edge */
+    inset: -6%;
     background-image: url('images/backgrounds/default.png');
     background-size: cover;
     background-position: center;
     z-index: -2;
     animation: startBgDrift 16s ease-in-out infinite;
 }
- 
-/* Darken/tint overlay so text and buttons stay readable over the art */
+
 body::after {
     content: "";
     position: fixed;
@@ -178,8 +214,7 @@ body::after {
     background: linear-gradient(180deg, rgba(21,21,21,0.55) 0%, rgba(21,21,21,0.75) 100%);
     z-index: -1;
 }
- 
-/* Slow side-to-side + up-down drift */
+
 @keyframes startBgDrift {
     0%   { transform: scale(1.04) translate(0px, 0px); }
     25%  { transform: scale(1.04) translate(-10px, 6px); }
@@ -189,6 +224,8 @@ body::after {
 }
 
 #victoryScreen {
+    position: relative;
+    overflow: hidden;
     padding: 40px 20px;
     text-align: center;
     animation: victoryFadeIn 0.6s ease-out;
@@ -207,24 +244,12 @@ body::after {
     max-width: 500px;
     margin: 0 auto 30px;
     color: #ddd;
-}
-
-#victoryPlayAgainButton {
-    background: gold;
-    color: black;
-    border: 3px solid white;
-    padding: 14px 28px;
-    font-size: 18px;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
 }
 
 @keyframes victoryFadeIn {
     from { opacity: 0; transform: scale(0.95); }
     to { opacity: 1; transform: scale(1); }
-}
-
-#victoryScreen {
-    position: relative;
-    overflow: hidden;
 }
 
 #confettiContainer {
@@ -268,6 +293,7 @@ body::after {
     max-width: 500px;
     margin: 0 auto 30px;
     color: #ddd;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
 }
 
 #fleeScreen h2 {
@@ -292,6 +318,7 @@ body::after {
     font-size: 14px;
     font-weight: bold;
     color: gold;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
 }
 
 .xpBar {
@@ -367,4 +394,55 @@ body::after {
 
 canvas#gameCanvas.shake {
     animation: screenShake 0.7s ease-in-out;
+}
+
+#mainMenu, #settingsScreen {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+#mainMenu h2 {
+    margin-bottom: 30px;
+    color: #ddd;
+}
+
+#settingsScreen h2 {
+    color: gold;
+    text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+
+#settingsControls {
+    max-width: 340px;
+    margin: 20px auto;
+    text-align: left;
+    background: rgba(20, 20, 20, 0.55);
+    border-radius: 12px;
+    padding: 20px;
+    backdrop-filter: blur(2px);
+}
+
+.settingRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 14px 0;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.settingRow select {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #444;
+    background: #232323;
+    color: white;
+}
+
+.settingRow input[type="range"] {
+    accent-color: gold;
+}
+
+.settingRow input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: gold;
 }

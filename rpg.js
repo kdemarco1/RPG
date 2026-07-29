@@ -3,13 +3,16 @@
 // Constants
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const enemy_attack_delay = 1000;
-const next_foe_delay= 1800;
+const next_foe_delay= 1500;
 let text_delay_multiplier = 35;
 const max_text_delay = 4000;
 const boss_interval = 3;
 let bossesDefeated = 0;
 const character_lift = 40;
-const xp_per_level = 30;
+const xp_per_level = 25;
+const defend_block_chance = 0.75;
+const defend_damage_multiplier_range = [0.15, 0.35]; // fraction of damage that still gets through on a successful block
+const defend_allowed_classes = ['Knight', 'Magician', 'Samurai'];
 const gameSettings = {
     textSpeed: 'normal',
     difficulty: 'normal',
@@ -163,6 +166,7 @@ class Character {
         this.charClass = charClass;
         this.potions = potions;
         this.isDefending = false;
+        this.lastDefendBlocked = false;
         this.x = baseX;
         this.y = baseY;
         this.baseX = baseX;
@@ -190,7 +194,7 @@ class Character {
     }
 
     recalculateStats() {
-        const attackBonus = Math.floor(this.totalXP * 0.06) + this.bonusAttack;
+        const attackBonus = Math.floor(this.totalXP * 0.09) + this.bonusAttack;
 
         this.attackRange = [
             this.baseAttackRange[0] + attackBonus,
@@ -243,9 +247,19 @@ class Character {
     let blockedByDefense = false;
 
     if (target.isDefending) {
-        blockedByDefense = true;
-        currentDamage = Math.floor(currentDamage / 2);
-        await writeSlowly(`${target.name} blocked the attack from ${this.name}! ${target.name} takes ${currentDamage} damage.`);
+        const blockSuccess = Math.random() < defend_block_chance;
+        target.lastDefendBlocked = blockSuccess;
+
+        if (blockSuccess) {
+            blockedByDefense = true;
+            const [minMult, maxMult] = defend_damage_multiplier_range;
+            const mult = minMult + Math.random() * (maxMult - minMult);
+            currentDamage = Math.max(1, Math.floor(currentDamage * mult));
+            spawnBlockEffect(target);
+            await writeSlowly(`${target.name} blocks the attack from ${this.name}! Only ${currentDamage} damage gets through.`);
+        } else {
+            await writeSlowly(`${target.name} tries to block, but ${this.name} breaks through the guard! ${target.name} takes ${currentDamage} damage.`);
+        }
     } else if (target === player) {
         await writeSlowly(`${this.name} attacks you, dealing ${currentDamage} damage.`);
     } else {
@@ -275,7 +289,7 @@ class Character {
 }
 
     async siphon(target) {
-        const siphonAmount = getRandomInt(12, 24);
+        const siphonAmount = getRandomInt(12, 20);
         const actualDrain = Math.min(siphonAmount, target.health);
 
         spawnSiphonEffect(target, this, 110);
@@ -324,7 +338,7 @@ class Character {
 let player = new Character('', 0, [0, 0], '', 0);
 
 const enemyLibrary = [
-    {name: 'Magician', healthRange: [40,48], attackRange: [14, 20], charClass: 'Magician', potions: 3},
+    {name: 'Magician', healthRange: [35,45], attackRange: [14, 20], charClass: 'Magician', potions: 2},
     {name: 'Gorgon', healthRange: [32,40], attackRange: [6, 12], charClass: 'Gorgon', potions: 1},
     {name: 'Minotaur', healthRange: [24,48], attackRange: [6, 14], charClass: 'Minotaur', potions: 0},
     {name: 'Werewolf', healthRange: [38,48], attackRange: [10, 22], charClass: 'Werewolf', potions: 0},
@@ -340,10 +354,10 @@ const enemyBehaviors = {
 
 const bossTemplate = {
     name: 'Ignis, The Beacon of False Hope',
-    healthRange: [220, 260],
-    attackRange: [30, 44],
+    healthRange: [180, 220],
+    attackRange: [25, 35],
     charClass: 'Boss',
-    potions: 1
+    potions: 0
 };
 
 function spawnBoss(bossNumber) {
@@ -461,13 +475,6 @@ function toggleButtons(disabled){
     healButton.disabled = disabled;
 }
 
-function showActionButtons(visible) {
-    const display = visible ? 'inline-block' : 'none';
-    attackButton.style.display = display;
-    defendButton.style.display = display;
-    healButton.style.display = display;
-}
-
 beginAdventureButton.addEventListener('click', startGame);
 
 async function startGame() {
@@ -477,6 +484,7 @@ async function startGame() {
     player.baseY = canvas.height - 40 - character_lift;
     player.x = player.baseX;
     player.y = player.baseY;
+    showActionButtons(true);
     await writeSlowly(`${player.name} the ${player.charClass} begins their adventure!`);
     startEncounter(spawnNextEncounter());
 }
@@ -616,9 +624,24 @@ attackButton.addEventListener('click', async () => {
 defendButton.addEventListener('click', async () => {
     toggleButtons(true);
     player.isDefending = true;
+    player.lastDefendBlocked = false;
 
-    await writeSlowly(`${player.name} brace for impact! Damage will be halved`);
+    await writeSlowly(`${player.name} braces for impact, watching for an opening!`);
     await enemyTurn();
+
+    // If the block succeeded and the player is still standing, they get a bonus counter-attack
+    if (player.health > 0 && player.lastDefendBlocked && currentEnemy.health > 0) {
+        await writeSlowly(`${player.name} capitalizes on the opening and strikes back!`);
+        player.hitsThisFight++;
+        await player.attack(currentEnemy);
+        updateBattleUI();
+
+        if (currentEnemy.health <= 0) {
+            await handleEnemyDefeat();
+            return;
+        }
+        toggleButtons(false);
+    }
 });
 
 healButton.addEventListener('click', async () => {
@@ -810,6 +833,9 @@ function updateHealButtonVisibility() {
 function showActionButtons(visible) {
     const display = visible ? 'inline-block' : 'none';
     attackButton.style.display = display;
-    defendButton.style.display = display;
+
+    const canDefend = visible && defend_allowed_classes.includes(player.charClass);
+    defendButton.style.display = canDefend ? 'inline-block' : 'none';
+
     healButton.style.display = visible && player.potions > 0 ? 'inline-block' : 'none';
 }

@@ -3,6 +3,7 @@ const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 const damagePopUps = [];
 const siphonEffects = [];
+const blockEffects = [];
 
 function easeOutBack(t) {
     const c1 = 1.70158;
@@ -21,6 +22,14 @@ function spawnSiphonEffect(fromActor, toActor, duration = 50) {
         life: duration,
         maxLife: duration,
         phase: Math.random() * Math.PI * 2
+    });
+}
+
+function spawnBlockEffect(actor, duration = 26) {
+    blockEffects.push({
+        actor,
+        life: duration,
+        maxLife: duration
     });
 }
 
@@ -348,6 +357,55 @@ function drawActor(actor) {
     );
 }
 
+function drawBlockEffects() {
+    for (let i = blockEffects.length - 1; i >= 0; i--) {
+        const effect = blockEffects[i];
+        effect.life--;
+
+        if (effect.life <= 0 || !effect.actor) {
+            blockEffects.splice(i, 1);
+            continue;
+        }
+
+        const progress = 1 - effect.life / effect.maxLife;
+        const alpha = Math.sin(progress * Math.PI); // fades in, peaks, fades out
+        const spriteHeight = getSpriteHeight(effect.actor);
+        const centerX = effect.actor.x;
+        const centerY = effect.actor.y - spriteHeight * 0.55;
+        const radius = 18 + progress * 42;
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        // Soft gold burst
+        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+        gradient.addColorStop(0, "rgba(241, 196, 15, 0.85)");
+        gradient.addColorStop(0.6, "rgba(241, 196, 15, 0.35)");
+        gradient.addColorStop(1, "rgba(241, 196, 15, 0)");
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Thin glowing ring
+        ctx.strokeStyle = "#f1c40f";
+        ctx.lineWidth = 3;
+        ctx.shadowColor = "#f1c40f";
+        ctx.shadowBlur = 16;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius * 0.68, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Shield glyph flash
+        ctx.shadowBlur = 8;
+        ctx.font = "bold 22px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("🛡️", centerX, centerY + 8);
+
+        ctx.restore();
+    }
+}
+
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const now = performance.now();
@@ -366,6 +424,8 @@ function gameLoop() {
     if (typeof currentEnemy !== 'undefined' && !currentEnemy.deathComplete) {
         drawActor(currentEnemy);
     }
+
+    drawBlockEffects();
 
     for (let i = damagePopUps.length - 1; i >= 0; i--) {
         const popup = damagePopUps[i];

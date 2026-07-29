@@ -25,7 +25,7 @@ const difficultyMultipliers = { easy: 0.6, normal: 1, hard: 1.5 };
 const difficultyScaleStep = { easy: 0.15, normal: 0.4, hard: 0.7 };
 // Player-side difficulty tuning: Easy makes the hero tougher/faster-leveling, Hard makes survival tighter
 const playerDifficultyModifiers = {
-    easy:   { healthMult: 1.2,  xpMult: 1.25, healMult: 1.15 },
+    easy:   { healthMult: 1.2,  xpMult: 1.6,  healMult: 1.15 },
     normal: { healthMult: 1,    xpMult: 1,    healMult: 1 },
     hard:   { healthMult: 0.85, xpMult: 0.8,  healMult: 0.8 }
 };
@@ -44,6 +44,7 @@ const beginAdventureButton = document.getElementById('beginAdventureButton');
 const attackButton = document.getElementById('attackButton');
 const defendButton = document.getElementById('defendButton');
 const healButton = document.getElementById('healButton');
+const specialButton = document.getElementById('specialButton');
 const victoryScreen = document.getElementById('victoryScreen');
 const victoryMessage = document.getElementById('victoryMessage');
 const victoryPlayAgainButton = document.getElementById('victoryPlayAgainButton');
@@ -145,9 +146,23 @@ const classAbilityInfo = {
     heal: { icon: '🧪', label: 'Heal', desc: 'Drink a potion to restore health mid-battle.' }
 };
 
+// Each class's Special Attack. Classes without an entry here simply don't get the button yet.
+const classSpecialMoves = {
+    Magician: {
+        label: '✨ Siphon',
+        icon: '✨',
+        summaryLabel: 'Siphon',
+        summaryDesc: 'Deals noticeably less damage than a regular Attack — but whatever it drains heals you for the same amount.',
+        async execute(user, target) {
+            await user.siphon(target);
+        }
+    }
+    // Knight and Samurai specials coming later
+};
 function getClassAbilities(charClass) {
     const abilities = ['attack'];
     if (defend_allowed_classes.includes(charClass)) abilities.push('defend');
+    if (classSpecialMoves[charClass]) abilities.push('special');
     if ((playerConfigs[charClass]?.potions ?? 0) > 0) abilities.push('heal');
     return abilities;
 }
@@ -340,7 +355,9 @@ class Character {
 }
 
     async siphon(target) {
-        const siphonAmount = getRandomInt(12, 24);
+        // Siphon trades raw damage for sustain — it should drain for meaningfully less
+        // than a normal attack, but the drained amount heals the caster.
+        const siphonAmount = getRandomInt(8, 14);
         const actualDrain = Math.min(siphonAmount, target.health);
 
         spawnSiphonEffect(target, this, 110);
@@ -534,6 +551,7 @@ function toggleButtons(disabled){
     attackButton.disabled = disabled;
     defendButton.disabled = disabled;
     healButton.disabled = disabled;
+    specialButton.disabled = disabled;
 }
 
 beginAdventureButton.addEventListener('click', () => {
@@ -610,6 +628,10 @@ async function runLoreSequence(sentences, runId) {
 function revealAbilitySummary(charClass, runId) {
     const abilities = getClassAbilities(charClass);
     loreAbilities.innerHTML = abilities.map(key => {
+        if (key === 'special') {
+            const move = classSpecialMoves[charClass];
+            return `<div class="loreAbilityRow"><span class="loreAbilityIcon">${move.icon}</span><div><strong>${move.summaryLabel}</strong><p>${move.summaryDesc}</p></div></div>`;
+        }
         const info = classAbilityInfo[key];
         return `<div class="loreAbilityRow"><span class="loreAbilityIcon">${info.icon}</span><div><strong>${info.label}</strong><p>${info.desc}</p></div></div>`;
     }).join('');
@@ -754,12 +776,6 @@ document.getElementById('nextFoeButton').addEventListener('click', async () => {
     startEncounter(spawnNextEncounter());
 });
 
-document.getElementById('fleeButton').addEventListener('click', async () => {
-    await writeSlowly(`${player.name} chose to flee! You live to fight another day`);
-    document.getElementById('choiceButtons').style.display = 'none';
-    document.getElementById('playAgainButton').style.display = 'inline-block';
-});
-
 attackButton.addEventListener('click', async () => {
     toggleButtons(true);
     player.isDefending = false;
@@ -797,10 +813,28 @@ defendButton.addEventListener('click', async () => {
     }
 });
 
+specialButton.addEventListener('click', async () => {
+    const move = classSpecialMoves[player.charClass];
+    if (!move) return;
+
+    toggleButtons(true);
+    player.isDefending = false;
+    player.hitsThisFight++;
+
+    await move.execute(player, currentEnemy);
+    updateBattleUI();
+
+    if (currentEnemy.health <= 0) {
+        await handleEnemyDefeat();
+    } else {
+        await enemyTurn();
+    }
+});
+
 healButton.addEventListener('click', async () => {
     toggleButtons(true);
     player.isDefending = false;
-    
+
     if (player.potions > 0) {
         const healingAmount = Math.max(1, Math.round(getRandomInt(15, 25) * getPlayerDifficultyMods().healMult));
         player.health = Math.min(player.health + healingAmount, player.maxHealth);
@@ -846,7 +880,6 @@ function resetGame() {
     currentEnemy = undefined;
 }
 
-document.getElementById('playAgainButton').addEventListener('click', resetGame);
 victoryPlayAgainButton.addEventListener('click', resetGame);
 defeatPlayAgainButton.addEventListener('click', resetGame);
 fleePlayAgainButton.addEventListener('click', resetGame);
@@ -996,6 +1029,13 @@ function showActionButtons(visible) {
 
     const canDefend = visible && defend_allowed_classes.includes(player.charClass);
     defendButton.style.display = canDefend ? 'inline-block' : 'none';
+
+    const specialMove = classSpecialMoves[player.charClass];
+    const canSpecial = visible && Boolean(specialMove);
+    specialButton.style.display = canSpecial ? 'inline-block' : 'none';
+    if (canSpecial) {
+        specialButton.textContent = specialMove.label;
+    }
 
     healButton.style.display = visible && player.potions > 0 ? 'inline-block' : 'none';
 }

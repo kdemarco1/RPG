@@ -537,6 +537,56 @@ canvas#gameCanvas.shake {
     color: #e74c3c;
 }
 
+/* Special Attack — arcane accent, distinct from the gold primary buttons */
+#specialButton {
+    background: linear-gradient(180deg, #b98aff 0%, #6c3fa8 100%);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 3px 0 rgba(70, 30, 120, 0.6), 0 4px 12px rgba(155, 89, 182, 0.4);
+}
+
+#specialButton:hover {
+    background: linear-gradient(180deg, #cba6ff 0%, #7d4bc0 100%);
+    box-shadow: 0 5px 0 rgba(70, 30, 120, 0.6), 0 8px 16px rgba(155, 89, 182, 0.5);
+}
+
+/* Battle action buttons — color-coded by role */
+#attackButton {
+    background: linear-gradient(180deg, #ff7b6b 0%, #b8341f 100%);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 3px 0 rgba(120, 25, 10, 0.6), 0 4px 12px rgba(184, 52, 31, 0.4);
+}
+
+#attackButton:hover {
+    background: linear-gradient(180deg, #ff9c8f 0%, #c9452e 100%);
+    box-shadow: 0 5px 0 rgba(120, 25, 10, 0.6), 0 8px 16px rgba(184, 52, 31, 0.5);
+}
+
+#defendButton {
+    background: linear-gradient(180deg, #6ab7ff 0%, #2b6cb0 100%);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 3px 0 rgba(20, 60, 110, 0.6), 0 4px 12px rgba(43, 108, 176, 0.4);
+}
+
+#defendButton:hover {
+    background: linear-gradient(180deg, #8ecaff 0%, #3c7fc9 100%);
+    box-shadow: 0 5px 0 rgba(20, 60, 110, 0.6), 0 8px 16px rgba(43, 108, 176, 0.5);
+}
+
+#healButton {
+    background: linear-gradient(180deg, #7fe08c 0%, #2f9e44 100%);
+    color: #163a1c;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 3px 0 rgba(20, 90, 35, 0.6), 0 4px 12px rgba(47, 158, 68, 0.4);
+}
+
+#healButton:hover {
+    background: linear-gradient(180deg, #9be8a5 0%, #3cb154 100%);
+    box-shadow: 0 5px 0 rgba(20, 90, 35, 0.6), 0 8px 16px rgba(47, 158, 68, 0.5);
+}
+
 /* Lore / Class Intro Screen */
 #loreScreen {
     padding: 40px 20px;

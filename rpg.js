@@ -21,8 +21,18 @@ const gameSettings = {
     soundVolume: 50
 };
 const textSpeedValues = { slow: 55, normal: 35, fast: 15 };
-const difficultyMultipliers = { easy: 0.8, normal: 1, hard: 1.3 };
-const difficultyScaleStep = { easy: 0.2, normal: 0.4, hard: 0.55 };
+const difficultyMultipliers = { easy: 0.6, normal: 1, hard: 1.5 };
+const difficultyScaleStep = { easy: 0.15, normal: 0.4, hard: 0.7 };
+// Player-side difficulty tuning: Easy makes the hero tougher/faster-leveling, Hard makes survival tighter
+const playerDifficultyModifiers = {
+    easy:   { healthMult: 1.2,  xpMult: 1.25, healMult: 1.15 },
+    normal: { healthMult: 1,    xpMult: 1,    healMult: 1 },
+    hard:   { healthMult: 0.85, xpMult: 0.8,  healMult: 0.8 }
+};
+
+function getPlayerDifficultyMods() {
+    return playerDifficultyModifiers[gameSettings.difficulty] ?? playerDifficultyModifiers.normal;
+}
 
 // DOM References
 const startScreen = document.getElementById('startScreen');
@@ -401,10 +411,18 @@ const bossTemplate = {
     potions: 1
 };
 
+// The first boss is capped regardless of difficulty so a fresh, low-level hero always has a
+// realistic shot at it. Every boss after that fully respects the chosen difficulty scaling.
+const first_boss_scale_cap = 0.85;
+
 function spawnBoss(bossNumber) {
     const baseDifficultyMult = difficultyMultipliers[gameSettings.difficulty] ?? 1;
     const scaleStep = difficultyScaleStep[gameSettings.difficulty] ?? 0.4;
-    const difficultyScale = (1 + (bossNumber - 1) * scaleStep) * baseDifficultyMult;
+    let difficultyScale = (1 + (bossNumber - 1) * scaleStep) * baseDifficultyMult;
+
+    if (bossNumber === 1) {
+        difficultyScale = Math.min(difficultyScale, first_boss_scale_cap);
+    }
 
     const health = Math.round(getRandomInt(bossTemplate.healthRange[0], bossTemplate.healthRange[1]) * difficultyScale);
     const attackRange = [
@@ -434,7 +452,9 @@ const playerConfigs = {
 
 function initPlayer(name, charClass) {
     const config = playerConfigs[charClass];
-    const hp = getRandomInt(config.healthRange[0], config.healthRange[1]);
+    const mods = getPlayerDifficultyMods();
+    const baseHp = getRandomInt(config.healthRange[0], config.healthRange[1]);
+    const hp = Math.max(1, Math.round(baseHp * mods.healthMult));
     const finalName = name.trim();
     const playerCharacter = new Character(finalName, hp, config.attackRange, charClass, config.potions);
     playerCharacter.isEnemy = false;
@@ -708,7 +728,7 @@ async function handleEnemyDefeat(){
     const efficiency = Math.min(2, expectedHits / actualHits);
 
     const baseXP = Math.round(currentEnemy.maxHealth * 0.6) * (wasBoss ? 1.5 : 1);
-    const xpReward = Math.round(baseXP * efficiency);
+    const xpReward = Math.round(baseXP * efficiency * getPlayerDifficultyMods().xpMult);
 
     await player.gainXP(xpReward);
     updateBattleUI();
@@ -782,7 +802,7 @@ healButton.addEventListener('click', async () => {
     player.isDefending = false;
     
     if (player.potions > 0) {
-        const healingAmount = getRandomInt(15, 25);
+        const healingAmount = Math.max(1, Math.round(getRandomInt(15, 25) * getPlayerDifficultyMods().healMult));
         player.health = Math.min(player.health + healingAmount, player.maxHealth);
         player.potions -= 1;
 

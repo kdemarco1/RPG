@@ -84,7 +84,20 @@
                     <button id="confirmClassButton">⚔️ Confirm Class</button>
                 </div>
 
-                <button id="beginAdventureButton">🛡️ Begin Adventure</button>
+                <button id="beginAdventureButton">📖 Continue</button>
+            </div>
+        </section>
+
+        <!-- Lore / Class Intro Screen -->
+        <section id="loreScreen" style="display: none;">
+            <div id="loreBox">
+                <h2 id="loreTitle"></h2>
+                <div id="loreTextWrap">
+                    <div id="loreText" class="loreTextStack"></div>
+                </div>
+                <div id="loreAbilities" class="loreAbilities"></div>
+                <button id="loreSkipButton">Skip ▶</button>
+                <button id="loreBeginButton" style="display: none;">⚔️ Begin Adventure</button>
             </div>
         </section>
 
@@ -103,11 +116,11 @@
         <button id="attackButton">⚔️ Attack</button>
         <button id="defendButton">🛡️ Defend</button>
         <button id="healButton">🧪 Heal</button>
+        <button id="specialButton" style="display: none;">✨ Special Attack</button>
         <div id="choiceButtons" style="display: none;">
             <button id="nextFoeButton">⚔️ Fight Next Foe</button>
             <button id="fleeButton">🏃 Flee</button>
         </div>
-        <button id="playAgainButton" style="display: none;">Play Again</button>
     </div>
     <canvas id="gameCanvas" width="800" height="400"></canvas>
     </section>

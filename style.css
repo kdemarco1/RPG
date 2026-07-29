@@ -108,6 +108,7 @@ button:disabled {
 #fleePlayAgainButton,
 #beginAdventureButton,
 #confirmClassButton,
+#loreBeginButton,
 button.primary {
     background: linear-gradient(180deg, #ffe066 0%, #d4a900 100%);
     color: #1a1a1a;
@@ -123,6 +124,7 @@ button.primary {
 #fleePlayAgainButton:hover,
 #beginAdventureButton:hover,
 #confirmClassButton:hover,
+#loreBeginButton:hover,
 button.primary:hover {
     background: linear-gradient(180deg, #fff0a0 0%, #e0b400 100%);
     box-shadow: 0 5px 0 rgba(150, 110, 0, 0.6), 0 8px 16px rgba(212, 169, 0, 0.45);
@@ -533,4 +535,160 @@ canvas#gameCanvas.shake {
 
 #heroSetup input.inputError::placeholder {
     color: #e74c3c;
+}
+
+/* Special Attack — arcane accent, distinct from the gold primary buttons */
+#specialButton {
+    background: linear-gradient(180deg, #b98aff 0%, #6c3fa8 100%);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 3px 0 rgba(70, 30, 120, 0.6), 0 4px 12px rgba(155, 89, 182, 0.4);
+}
+
+#specialButton:hover {
+    background: linear-gradient(180deg, #cba6ff 0%, #7d4bc0 100%);
+    box-shadow: 0 5px 0 rgba(70, 30, 120, 0.6), 0 8px 16px rgba(155, 89, 182, 0.5);
+}
+
+/* Battle action buttons — color-coded by role */
+#attackButton {
+    background: linear-gradient(180deg, #ff7b6b 0%, #b8341f 100%);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 3px 0 rgba(120, 25, 10, 0.6), 0 4px 12px rgba(184, 52, 31, 0.4);
+}
+
+#attackButton:hover {
+    background: linear-gradient(180deg, #ff9c8f 0%, #c9452e 100%);
+    box-shadow: 0 5px 0 rgba(120, 25, 10, 0.6), 0 8px 16px rgba(184, 52, 31, 0.5);
+}
+
+#defendButton {
+    background: linear-gradient(180deg, #6ab7ff 0%, #2b6cb0 100%);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 3px 0 rgba(20, 60, 110, 0.6), 0 4px 12px rgba(43, 108, 176, 0.4);
+}
+
+#defendButton:hover {
+    background: linear-gradient(180deg, #8ecaff 0%, #3c7fc9 100%);
+    box-shadow: 0 5px 0 rgba(20, 60, 110, 0.6), 0 8px 16px rgba(43, 108, 176, 0.5);
+}
+
+#healButton {
+    background: linear-gradient(180deg, #7fe08c 0%, #2f9e44 100%);
+    color: #163a1c;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 3px 0 rgba(20, 90, 35, 0.6), 0 4px 12px rgba(47, 158, 68, 0.4);
+}
+
+#healButton:hover {
+    background: linear-gradient(180deg, #9be8a5 0%, #3cb154 100%);
+    box-shadow: 0 5px 0 rgba(20, 90, 35, 0.6), 0 8px 16px rgba(47, 158, 68, 0.5);
+}
+
+/* Lore / Class Intro Screen */
+#loreScreen {
+    padding: 40px 20px;
+    text-align: center;
+    animation: victoryFadeIn 0.6s ease-out;
+}
+
+#loreBox {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 30px 24px;
+    background: rgba(20, 16, 10, 0.7);
+    border: 2px solid #7a5c2e;
+    border-radius: 12px;
+    backdrop-filter: blur(2px);
+}
+
+#loreTitle {
+    font-family: 'Cinzel', serif;
+    color: gold;
+    font-size: 20px;
+    text-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+    margin-bottom: 8px;
+}
+
+#loreTextWrap {
+    padding: 6px 4px;
+    text-align: left;
+}
+
+.loreTextStack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.loreSentence {
+    font-size: 17px;
+    line-height: 1.6;
+    color: #f0e6c8;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    margin: 0;
+}
+
+.loreSentence.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.loreAbilities {
+    text-align: left;
+    margin-top: 6px;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.6s ease, max-height 0.6s ease;
+}
+
+.loreAbilities.visible {
+    opacity: 1;
+    max-height: 600px;
+}
+
+.loreAbilityRow {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 14px 0;
+    padding: 10px 12px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid #4a3a12;
+    border-radius: 8px;
+}
+
+.loreAbilityIcon {
+    font-size: 22px;
+    line-height: 1.2;
+}
+
+.loreAbilityRow strong {
+    color: gold;
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+}
+
+.loreAbilityRow p {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: #ddd;
+}
+
+#loreSkipButton {
+    font-size: 13px;
+    padding: 8px 14px;
+    opacity: 0.75;
+}
+
+#loreBeginButton {
+    display: none;
+    width: 100%;
+    margin-top: 14px;
 }

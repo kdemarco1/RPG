@@ -3,13 +3,13 @@
 // Constants
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const enemy_attack_delay = 1000;
-const next_foe_delay= 1500;
+const next_foe_delay= 1800;
 let text_delay_multiplier = 35;
 const max_text_delay = 4000;
 const boss_interval = 3;
 let bossesDefeated = 0;
 const character_lift = 40;
-const xp_per_level = 25;
+const xp_per_level = 30;
 const defend_block_chance = 0.75;
 const defend_damage_multiplier_range = [0.15, 0.35]; // fraction of damage that still gets through on a successful block
 const defend_allowed_classes = ['Knight', 'Magician', 'Samurai'];
@@ -59,6 +59,12 @@ const screenShakeToggle = document.getElementById('screenShakeToggle');
 const confettiToggle = document.getElementById('confettiToggle');
 const volumeSlider = document.getElementById('volumeSlider');
 const backToMenuButton = document.getElementById('backToMenuButton');
+const loreScreen = document.getElementById('loreScreen');
+const loreTitle = document.getElementById('loreTitle');
+const loreText = document.getElementById('loreText');
+const loreAbilities = document.getElementById('loreAbilities');
+const loreSkipButton = document.getElementById('loreSkipButton');
+const loreBeginButton = document.getElementById('loreBeginButton');
 
 // Game Stats
 let selectedClass = '';
@@ -100,6 +106,41 @@ const class_icons = {
     Magician: '🧙🏼‍♂️',
     Samurai: '🥷🏻'
 };
+
+// Lore intro screen — class-specific story beats and ability blurbs
+const classLore = {
+    Knight: [
+        "The kingdom's outer villages have gone quiet — too quiet.",
+        "Farmers speak of shapes moving at the treeline where no shapes should be.",
+        "You were trained for exactly this moment: to stand between darkness and the innocent.",
+        "Shield raised and faith unshaken, you set out toward the borderlands."
+    ],
+    Magician: [
+        "The old tomes warned of a rot spreading beneath the hills.",
+        "Your masters dismissed it as superstition — until the messengers stopped returning.",
+        "You alone answered the call, spellbook bound tight against your hip.",
+        "Whatever waits in the dark has never faced power quite like yours."
+    ],
+    Samurai: [
+        "Your clan's banner has not flown in open battle for a generation.",
+        "But the reports from the eastern road can no longer be ignored.",
+        "You sharpen your blade in silence, recalling your teacher's final lesson.",
+        "Discipline. Patience. Strike only when the moment is true."
+    ]
+};
+
+const classAbilityInfo = {
+    attack: { icon: '⚔️', label: 'Attack', desc: 'Strike your foe for damage based on your weapon and level.' },
+    defend: { icon: '🛡️', label: 'Defend', desc: 'Brace for the blow — a good chance to block most of the damage, then strike back.' },
+    heal: { icon: '🧪', label: 'Heal', desc: 'Drink a potion to restore health mid-battle.' }
+};
+
+function getClassAbilities(charClass) {
+    const abilities = ['attack'];
+    if (defend_allowed_classes.includes(charClass)) abilities.push('defend');
+    if ((playerConfigs[charClass]?.potions ?? 0) > 0) abilities.push('heal');
+    return abilities;
+}
 
 function showClassInfo(className) {
     const info = class_info[className];
@@ -194,7 +235,7 @@ class Character {
     }
 
     recalculateStats() {
-        const attackBonus = Math.floor(this.totalXP * 0.09) + this.bonusAttack;
+        const attackBonus = Math.floor(this.totalXP * 0.06) + this.bonusAttack;
 
         this.attackRange = [
             this.baseAttackRange[0] + attackBonus,
@@ -289,7 +330,7 @@ class Character {
 }
 
     async siphon(target) {
-        const siphonAmount = getRandomInt(12, 20);
+        const siphonAmount = getRandomInt(12, 24);
         const actualDrain = Math.min(siphonAmount, target.health);
 
         spawnSiphonEffect(target, this, 110);
@@ -338,7 +379,7 @@ class Character {
 let player = new Character('', 0, [0, 0], '', 0);
 
 const enemyLibrary = [
-    {name: 'Magician', healthRange: [35,45], attackRange: [14, 20], charClass: 'Magician', potions: 2},
+    {name: 'Magician', healthRange: [40,48], attackRange: [14, 20], charClass: 'Magician', potions: 3},
     {name: 'Gorgon', healthRange: [32,40], attackRange: [6, 12], charClass: 'Gorgon', potions: 1},
     {name: 'Minotaur', healthRange: [24,48], attackRange: [6, 14], charClass: 'Minotaur', potions: 0},
     {name: 'Werewolf', healthRange: [38,48], attackRange: [10, 22], charClass: 'Werewolf', potions: 0},
@@ -354,10 +395,10 @@ const enemyBehaviors = {
 
 const bossTemplate = {
     name: 'Ignis, The Beacon of False Hope',
-    healthRange: [180, 220],
-    attackRange: [25, 35],
+    healthRange: [220, 260],
+    attackRange: [30, 44],
     charClass: 'Boss',
-    potions: 0
+    potions: 1
 };
 
 function spawnBoss(bossNumber) {
@@ -475,7 +516,99 @@ function toggleButtons(disabled){
     healButton.disabled = disabled;
 }
 
-beginAdventureButton.addEventListener('click', startGame);
+beginAdventureButton.addEventListener('click', () => {
+    showLoreScreen(player.charClass);
+});
+
+let loreRunId = 0;
+let loreSkipRequested = false;
+
+function showLoreScreen(charClass) {
+    loreRunId++;
+    const thisRun = loreRunId;
+    loreSkipRequested = false;
+
+    startScreen.style.display = 'none';
+    loreScreen.style.display = 'block';
+
+    loreTitle.textContent = `${player.name} the ${charClass}`;
+    loreText.innerHTML = '';
+    loreAbilities.innerHTML = '';
+    loreAbilities.classList.remove('visible');
+    loreBeginButton.style.display = 'none';
+
+    const sentences = classLore[charClass] || classLore.Knight;
+    runLoreSequence(sentences, thisRun);
+}
+
+// Sleeps for `ms`, but returns early if the reader hits Skip — keeps skip feeling instant
+async function sleepUnlessSkipped(ms) {
+    const step = 50;
+    let elapsed = 0;
+    while (elapsed < ms) {
+        if (loreSkipRequested) return;
+        await sleep(Math.min(step, ms - elapsed));
+        elapsed += step;
+    }
+}
+
+function appendLoreSentence(text) {
+    const line = document.createElement('p');
+    line.className = 'loreSentence';
+    line.textContent = text;
+    loreText.appendChild(line);
+    void line.offsetWidth; // force reflow so the fade-in transition actually plays
+    line.classList.add('visible');
+}
+
+async function runLoreSequence(sentences, runId) {
+    for (let i = 0; i < sentences.length; i++) {
+        if (runId !== loreRunId) return;
+
+        if (loreSkipRequested) {
+            for (let j = i; j < sentences.length; j++) appendLoreSentence(sentences[j]);
+            break;
+        }
+
+        appendLoreSentence(sentences[i]);
+        await sleepUnlessSkipped(500);
+        if (runId !== loreRunId) return;
+
+        if (loreSkipRequested) {
+            for (let j = i + 1; j < sentences.length; j++) appendLoreSentence(sentences[j]);
+            break;
+        }
+
+        const holdTime = Math.min(Math.max(sentences[i].length * text_delay_multiplier, 900), max_text_delay);
+        await sleepUnlessSkipped(holdTime);
+    }
+
+    if (runId !== loreRunId) return;
+    revealAbilitySummary(player.charClass, runId);
+}
+
+function revealAbilitySummary(charClass, runId) {
+    const abilities = getClassAbilities(charClass);
+    loreAbilities.innerHTML = abilities.map(key => {
+        const info = classAbilityInfo[key];
+        return `<div class="loreAbilityRow"><span class="loreAbilityIcon">${info.icon}</span><div><strong>${info.label}</strong><p>${info.desc}</p></div></div>`;
+    }).join('');
+
+    requestAnimationFrame(() => {
+        if (runId !== loreRunId) return;
+        loreAbilities.classList.add('visible');
+        loreBeginButton.style.display = 'inline-block';
+    });
+}
+
+loreSkipButton.addEventListener('click', () => {
+    loreSkipRequested = true;
+});
+
+loreBeginButton.addEventListener('click', () => {
+    loreScreen.style.display = 'none';
+    startGame();
+});
 
 async function startGame() {
     startScreen.style.display = 'none';
@@ -671,6 +804,13 @@ function resetGame() {
     victoryScreen.style.display = 'none';
     defeatScreen.style.display = 'none';
     fleeScreen.style.display = 'none';
+    loreScreen.style.display = 'none';
+    loreRunId++; // cancels any in-progress lore sequence
+    loreSkipRequested = false;
+    loreText.innerHTML = '';
+    loreAbilities.classList.remove('visible');
+    loreAbilities.innerHTML = '';
+    loreBeginButton.style.display = 'none';
     document.getElementById('confettiContainer').innerHTML = '';
     startScreen.style.display = 'none';
     mainMenu.style.display = '';

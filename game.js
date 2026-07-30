@@ -173,6 +173,13 @@ function updateActor(actor, target) {
     updateMovement(actor, target);
 }
 
+function getActivePowerSwipeGlow(actor) {
+    for (const effect of powerSwipeEffects) {
+        if (effect.actor === actor && effect.life > 0) return effect;
+    }
+    return null;
+}
+
 function drawSprite(actor, spriteAlpha, scale, rotation, yOffset) {
 
     ctx.save();
@@ -222,7 +229,13 @@ function drawSprite(actor, spriteAlpha, scale, rotation, yOffset) {
 
     ctx.globalAlpha = spriteAlpha;
 
-    if (actor.visualState === "hurt" && actor.health > 0) {
+    const powerSwipeGlow = getActivePowerSwipeGlow(actor);
+    if (powerSwipeGlow) {
+        const glowProgress = 1 - powerSwipeGlow.life / powerSwipeGlow.maxLife;
+        const glowPulse = Math.sin(glowProgress * Math.PI); // ramps up then eases off across the swing
+        ctx.shadowColor = "#8a5cff";
+        ctx.shadowBlur = 10 + glowPulse * 24;
+    } else if (actor.visualState === "hurt" && actor.health > 0) {
         ctx.shadowColor = "#e74c3c";
         ctx.shadowBlur = 20;
     }
@@ -478,6 +491,7 @@ function gameLoop() {
     }
 
     drawBlockEffects();
+    drawPowerSwipeEffects();
 
     for (let i = damagePopUps.length - 1; i >= 0; i--) {
         const popup = damagePopUps[i];

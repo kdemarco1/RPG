@@ -604,7 +604,7 @@ function showLoreScreen(charClass) {
 
 // Sleeps for `ms`, but returns early if the reader hits Skip — keeps skip feeling instant
 async function sleepUnlessSkipped(ms) {
-    const step = 50;
+    const step = 30;
     let elapsed = 0;
     while (elapsed < ms) {
         if (loreSkipRequested) return;

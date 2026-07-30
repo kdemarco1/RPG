@@ -4,6 +4,7 @@ ctx.imageSmoothingEnabled = false;
 const damagePopUps = [];
 const siphonEffects = [];
 const blockEffects = [];
+const powerSwipeEffects = [];
 
 function easeOutBack(t) {
     const c1 = 1.70158;
@@ -27,6 +28,14 @@ function spawnSiphonEffect(fromActor, toActor, duration = 50) {
 
 function spawnBlockEffect(actor, duration = 26) {
     blockEffects.push({
+        actor,
+        life: duration,
+        maxLife: duration
+    });
+}
+
+function spawnPowerSwipeEffect(actor, duration = 34) {
+    powerSwipeEffects.push({
         actor,
         life: duration,
         maxLife: duration
@@ -401,6 +410,49 @@ function drawBlockEffects() {
         ctx.font = "bold 22px monospace";
         ctx.textAlign = "center";
         ctx.fillText("🛡️", centerX, centerY + 8);
+
+        ctx.restore();
+    }
+}
+
+function drawPowerSwipeEffects() {
+    for (let i = powerSwipeEffects.length - 1; i >= 0; i--) {
+        const effect = powerSwipeEffects[i];
+        effect.life--;
+
+        if (effect.life <= 0 || !effect.actor) {
+            powerSwipeEffects.splice(i, 1);
+            continue;
+        }
+
+        const progress = 1 - effect.life / effect.maxLife;
+        const alpha = Math.sin(progress * Math.PI);
+        const spriteHeight = getSpriteHeight(effect.actor);
+        const centerX = effect.actor.x;
+        const centerY = effect.actor.y - spriteHeight * 0.5;
+        const radius = 24 + progress * 55;
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        // Blue-violet arcane burst
+        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+        gradient.addColorStop(0, "rgba(140, 92, 246, 0.9)");
+        gradient.addColorStop(0.55, "rgba(90, 60, 220, 0.45)");
+        gradient.addColorStop(1, "rgba(90, 60, 220, 0)");
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Glowing ring to sell the "charged strike" feel
+        ctx.strokeStyle = "#8a5cff";
+        ctx.lineWidth = 3;
+        ctx.shadowColor = "#8a5cff";
+        ctx.shadowBlur = 18;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius * 0.62, 0, Math.PI * 2);
+        ctx.stroke();
 
         ctx.restore();
     }

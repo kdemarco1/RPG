@@ -118,7 +118,7 @@ const class_icons = {
     Samurai: '🥷🏻'
 };
 
-// Lore intro screen — class-specific story beats and ability blurbs
+// Lore intro screen
 const classLore = {
     Knight: [
         "The kingdom's outer villages have gone quiet — too quiet.",
@@ -146,13 +146,13 @@ const classAbilityInfo = {
     heal: { icon: '🧪', label: 'Heal', desc: 'Drink a potion to restore health mid-battle.' }
 };
 
-// Each class's Special Attack. Classes without an entry here simply don't get the button yet.
+// Each class's Special Attack
 const classSpecialMoves = {
     Knight: {
         label: '💥 Power Swipe',
         icon: '💥',
         summaryLabel: 'Power Swipe',
-        summaryDesc: 'A devastating overhead strike wreathed in blue-violet light, dealing 2-3x normal damage. Needs 3 turns to recharge after use.',
+        summaryDesc: 'A devastating strike wreathed in blue-violet light, dealing 2-3x normal damage. Needs 3 turns to recharge after use.',
         cooldownTurns: 3,
         async execute(user, target) {
             const attackConfig = window.animConfig?.[user.charClass]?.attacking;
@@ -173,7 +173,7 @@ const classSpecialMoves = {
             await user.siphon(target);
         }
     }
-    // Samurai special coming later
+    // Samurai special
 };
 function getClassAbilities(charClass) {
     const abilities = ['attack'];

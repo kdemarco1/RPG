@@ -155,7 +155,10 @@ const classSpecialMoves = {
         summaryDesc: 'A devastating overhead strike wreathed in blue-violet light, dealing 2-3x normal damage. Needs 3 turns to recharge after use.',
         cooldownTurns: 3,
         async execute(user, target) {
-            spawnPowerSwipeEffect(user);
+            const attackConfig = window.animConfig?.[user.charClass]?.attacking;
+            const swingDuration = attackConfig ? attackConfig.frames * attackConfig.speed : 60;
+            const returnBuffer = 30; // extra frames to hold the glow through the ease-back-to-idle movement
+            spawnPowerSwipeEffect(user, swingDuration + returnBuffer);
             await writeSlowly(`${user.name}'s blade glows with blue-violet light as they wind up a mighty swipe!`);
             const multiplier = 2 + Math.random(); // 2x - 3x normal damage
             await user.attack(target, false, multiplier);
@@ -604,7 +607,7 @@ function showLoreScreen(charClass) {
 
 // Sleeps for `ms`, but returns early if the reader hits Skip — keeps skip feeling instant
 async function sleepUnlessSkipped(ms) {
-    const step = 30;
+    const step = 50;
     let elapsed = 0;
     while (elapsed < ms) {
         if (loreSkipRequested) return;

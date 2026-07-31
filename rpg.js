@@ -148,6 +148,22 @@ const classAbilityInfo = {
 
 // Each class's Special Attack. Classes without an entry here simply don't get the button yet.
 const classSpecialMoves = {
+    Knight: {
+        label: '💥 Power Swipe',
+        icon: '💥',
+        summaryLabel: 'Power Swipe',
+        summaryDesc: 'A devastating overhead strike wreathed in blue-violet light, dealing 2-3x normal damage. Needs 3 turns to recharge after use.',
+        cooldownTurns: 3,
+        async execute(user, target) {
+            const attackConfig = window.animConfig?.[user.charClass]?.attacking;
+            const swingDuration = attackConfig ? attackConfig.frames * attackConfig.speed : 60;
+            const returnBuffer = 30; // extra frames to hold the glow through the ease-back-to-idle movement
+            spawnPowerSwipeEffect(user, swingDuration + returnBuffer);
+            await writeSlowly(`${user.name}'s blade glows with blue-violet light as they wind up a mighty swipe!`);
+            const multiplier = 2 + Math.random(); // 2x - 3x normal damage
+            await user.attack(target, false, multiplier);
+        }
+    },
     Magician: {
         label: '✨ Siphon',
         icon: '✨',
@@ -157,7 +173,7 @@ const classSpecialMoves = {
             await user.siphon(target);
         }
     }
-    // Knight and Samurai specials coming later
+    // Samurai special coming later
 };
 function getClassAbilities(charClass) {
     const abilities = ['attack'];
@@ -233,6 +249,7 @@ class Character {
         this.potions = potions;
         this.isDefending = false;
         this.lastDefendBlocked = false;
+        this.specialCooldown = 0;
         this.x = baseX;
         this.y = baseY;
         this.baseX = baseX;
@@ -302,8 +319,8 @@ class Character {
         }
     }
 
-    async attack(target, isFollowUp = false) {
-    let currentDamage = this.attackLevel;
+    async attack(target, isFollowUp = false, damageMultiplier = 1) {
+    let currentDamage = Math.round(this.attackLevel * damageMultiplier);
     this.visualState = 'attacking';
 
     const attackConfig = window.animConfig?.[this.charClass]?.attacking;
@@ -539,6 +556,7 @@ function updateBattleUI(){
         setElementText('playerPotions', player.potions);
         setElementText('playerLevelLabel', `Level ${player.level}`);
         updateHealButtonVisibility();
+        refreshSpecialButtonLabel();
     }
     if (currentEnemy) {
         setElementText('enemyName', currentEnemy.name);
@@ -547,11 +565,19 @@ function updateBattleUI(){
     }
 }
 
+function tickCooldowns() {
+    if (player.specialCooldown > 0) {
+        player.specialCooldown--;
+    }
+}
+
 function toggleButtons(disabled){
     attackButton.disabled = disabled;
     defendButton.disabled = disabled;
     healButton.disabled = disabled;
-    specialButton.disabled = disabled;
+    const move = classSpecialMoves[player.charClass];
+    const onCooldown = Boolean(move?.cooldownTurns) && player.specialCooldown > 0;
+    specialButton.disabled = disabled || onCooldown;
 }
 
 beginAdventureButton.addEventListener('click', () => {
@@ -777,6 +803,7 @@ document.getElementById('nextFoeButton').addEventListener('click', async () => {
 });
 
 attackButton.addEventListener('click', async () => {
+    tickCooldowns();
     toggleButtons(true);
     player.isDefending = false;
     player.hitsThisFight++;
@@ -791,6 +818,7 @@ attackButton.addEventListener('click', async () => {
 });
 
 defendButton.addEventListener('click', async () => {
+    tickCooldowns();
     toggleButtons(true);
     player.isDefending = true;
     player.lastDefendBlocked = false;
@@ -817,11 +845,25 @@ specialButton.addEventListener('click', async () => {
     const move = classSpecialMoves[player.charClass];
     if (!move) return;
 
+    tickCooldowns();
+
+    // Shouldn't normally be reachable since the button disables itself while on cooldown,
+    // but guards against any race between the click and the UI refresh.
+    if (move.cooldownTurns && player.specialCooldown > 0) {
+        updateBattleUI();
+        return;
+    }
+
     toggleButtons(true);
     player.isDefending = false;
     player.hitsThisFight++;
 
     await move.execute(player, currentEnemy);
+
+    if (move.cooldownTurns) {
+        player.specialCooldown = move.cooldownTurns;
+    }
+
     updateBattleUI();
 
     if (currentEnemy.health <= 0) {
@@ -832,6 +874,7 @@ specialButton.addEventListener('click', async () => {
 });
 
 healButton.addEventListener('click', async () => {
+    tickCooldowns();
     toggleButtons(true);
     player.isDefending = false;
 
@@ -1023,6 +1066,13 @@ function updateHealButtonVisibility() {
     healButton.style.display = player.potions > 0 ? 'inline-block' : 'none';
 }
 
+function refreshSpecialButtonLabel() {
+    const move = classSpecialMoves[player.charClass];
+    if (!move) return;
+    const onCooldown = Boolean(move.cooldownTurns) && player.specialCooldown > 0;
+    specialButton.textContent = onCooldown ? `${move.label} (${player.specialCooldown})` : move.label;
+}
+
 function showActionButtons(visible) {
     const display = visible ? 'inline-block' : 'none';
     attackButton.style.display = display;
@@ -1034,7 +1084,7 @@ function showActionButtons(visible) {
     const canSpecial = visible && Boolean(specialMove);
     specialButton.style.display = canSpecial ? 'inline-block' : 'none';
     if (canSpecial) {
-        specialButton.textContent = specialMove.label;
+        refreshSpecialButtonLabel();
     }
 
     healButton.style.display = visible && player.potions > 0 ? 'inline-block' : 'none';

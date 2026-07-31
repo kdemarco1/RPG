@@ -4,6 +4,7 @@ ctx.imageSmoothingEnabled = false;
 const damagePopUps = [];
 const siphonEffects = [];
 const blockEffects = [];
+const powerSwipeEffects = [];
 
 function easeOutBack(t) {
     const c1 = 1.70158;
@@ -31,6 +32,23 @@ function spawnBlockEffect(actor, duration = 26) {
         life: duration,
         maxLife: duration
     });
+}
+
+function spawnPowerSwipeEffect(actor, duration = 34) {
+    powerSwipeEffects.push({
+        actor,
+        life: duration,
+        maxLife: duration,
+        burstDuration: Math.min(24, duration) // the radial flash only plays at the very start
+    });
+}
+
+// Ramps 0->1, holds at 1, then ramps back to 0 — for effects that should stay "on" through
+// an action instead of a symmetric pulse that peaks in the middle and fades early.
+function fadeInHoldOut(progress, fadeInFrac = 0.12, fadeOutFrac = 0.25) {
+    if (progress < fadeInFrac) return progress / fadeInFrac;
+    if (progress > 1 - fadeOutFrac) return Math.max(0, (1 - progress) / fadeOutFrac);
+    return 1;
 }
 
 function updateAnimation(actor) {
@@ -164,6 +182,13 @@ function updateActor(actor, target) {
     updateMovement(actor, target);
 }
 
+function getActivePowerSwipeGlow(actor) {
+    for (const effect of powerSwipeEffects) {
+        if (effect.actor === actor && effect.life > 0) return effect;
+    }
+    return null;
+}
+
 function drawSprite(actor, spriteAlpha, scale, rotation, yOffset) {
 
     ctx.save();
@@ -213,7 +238,15 @@ function drawSprite(actor, spriteAlpha, scale, rotation, yOffset) {
 
     ctx.globalAlpha = spriteAlpha;
 
-    if (actor.visualState === "hurt" && actor.health > 0) {
+    const powerSwipeGlow = getActivePowerSwipeGlow(actor);
+    if (powerSwipeGlow) {
+        const glowProgress = 1 - powerSwipeGlow.life / powerSwipeGlow.maxLife;
+        const glowStrength = fadeInHoldOut(glowProgress);
+        // A gentle living pulse layered on top so the held glow doesn't look static
+        const livingPulse = Math.sin(performance.now() * 0.012) * 3;
+        ctx.shadowColor = "#8a5cff";
+        ctx.shadowBlur = 10 + glowStrength * 22 + livingPulse;
+    } else if (actor.visualState === "hurt" && actor.health > 0) {
         ctx.shadowColor = "#e74c3c";
         ctx.shadowBlur = 20;
     }
@@ -406,6 +439,55 @@ function drawBlockEffects() {
     }
 }
 
+function drawPowerSwipeEffects() {
+    for (let i = powerSwipeEffects.length - 1; i >= 0; i--) {
+        const effect = powerSwipeEffects[i];
+        effect.life--;
+
+        if (effect.life <= 0 || !effect.actor) {
+            powerSwipeEffects.splice(i, 1);
+            continue;
+        }
+
+        // The radial burst is just the activation flash — it only plays for the first
+        // burstDuration frames, even though the effect (and the sprite's outline glow)
+        // stays alive for the full swing + return.
+        const elapsed = effect.maxLife - effect.life;
+        if (elapsed > effect.burstDuration) continue;
+
+        const burstProgress = elapsed / effect.burstDuration;
+        const alpha = Math.sin(burstProgress * Math.PI);
+        const spriteHeight = getSpriteHeight(effect.actor);
+        const centerX = effect.actor.x;
+        const centerY = effect.actor.y - spriteHeight * 0.5;
+        const radius = 24 + burstProgress * 55;
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        // Blue-violet arcane burst
+        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+        gradient.addColorStop(0, "rgba(140, 92, 246, 0.9)");
+        gradient.addColorStop(0.55, "rgba(90, 60, 220, 0.45)");
+        gradient.addColorStop(1, "rgba(90, 60, 220, 0)");
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Glowing ring to sell the "charged strike" feel
+        ctx.strokeStyle = "#8a5cff";
+        ctx.lineWidth = 3;
+        ctx.shadowColor = "#8a5cff";
+        ctx.shadowBlur = 18;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius * 0.62, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.restore();
+    }
+}
+
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const now = performance.now();
@@ -426,6 +508,7 @@ function gameLoop() {
     }
 
     drawBlockEffects();
+    drawPowerSwipeEffects();
 
     for (let i = damagePopUps.length - 1; i >= 0; i--) {
         const popup = damagePopUps[i];

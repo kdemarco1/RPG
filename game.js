@@ -5,6 +5,7 @@ const damagePopUps = [];
 const siphonEffects = [];
 const blockEffects = [];
 const powerSwipeEffects = [];
+const counterStanceEffects = [];
 
 function easeOutBack(t) {
     const c1 = 1.70158;

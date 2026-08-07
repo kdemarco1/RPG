@@ -71,11 +71,7 @@ const confettiToggle = document.getElementById('confettiToggle');
 const volumeSlider = document.getElementById('volumeSlider');
 const backToMenuButton = document.getElementById('backToMenuButton');
 const loreScreen = document.getElementById('loreScreen');
-const loreTitle = document.getElementById('loreTitle');
-const loreText = document.getElementById('loreText');
-const loreAbilities = document.getElementById('loreAbilities');
-const loreSkipButton = document.getElementById('loreSkipButton');
-const loreBeginButton = document.getElementById('loreBeginButton');
+const introLine = document.getElementById('introLine');
 
 // Game Stats
 let selectedClass = '';
@@ -119,27 +115,6 @@ const class_icons = {
 };
 
 // Lore intro screen — class-specific story beats and ability blurbs
-const classLore = {
-    Knight: [
-        "The kingdom's outer villages have gone quiet — too quiet.",
-        "Farmers speak of shapes moving at the treeline where no shapes should be.",
-        "You were trained for exactly this moment: to stand between darkness and the innocent.",
-        "Shield raised and faith unshaken, you set out toward the borderlands."
-    ],
-    Magician: [
-        "The old tomes warned of a rot spreading beneath the hills.",
-        "Your masters dismissed it as superstition — until the messengers stopped returning.",
-        "You alone answered the call, spellbook bound tight against your hip.",
-        "Whatever waits in the dark has never faced power quite like yours."
-    ],
-    Samurai: [
-        "Your clan's banner has not flown in open battle for a generation.",
-        "But the reports from the eastern road can no longer be ignored.",
-        "You sharpen your blade in silence, recalling your teacher's final lesson.",
-        "Discipline. Patience. Strike only when the moment is true."
-    ]
-};
-
 const classAbilityInfo = {
     attack: { icon: '⚔️', label: 'Attack', desc: 'Strike your foe for damage based on your weapon and level.' },
     defend: { icon: '🛡️', label: 'Defend', desc: 'Brace for the blow — a good chance to block most of the damage, then strike back.' },
@@ -205,11 +180,24 @@ function updateCharacterCard() {
         <strong>⚔️ </strong> ${player.attackRange[0]}-${player.attackRange[1]}<br><br>
         <strong>🧪 </strong> ${player.potions}<br><br>
         <strong>🎚️ </strong> ${gameSettings.difficulty}`;
-    document.getElementById("classStats").innerHTML = '';
+    document.getElementById("classStats").innerHTML = renderAbilitySummaryHTML(player.charClass);
     document.getElementById("heroSetup").style.display = "none";
     beginAdventureButton.style.display = "inline-block";
     document.querySelectorAll(".classButton").forEach(button=>{button.disabled = true; });
     document.getElementById("portrait").style.display = "none";
+}
+
+function renderAbilitySummaryHTML(charClass) {
+    const abilities = getClassAbilities(charClass);
+    const rows = abilities.map(key => {
+        if (key === 'special') {
+            const move = classSpecialMoves[charClass];
+            return `<div class="abilityRow"><span class="abilityIcon">${move.icon}</span><div><strong>${move.summaryLabel}</strong><p>${move.summaryDesc}</p></div></div>`;
+        }
+        const info = classAbilityInfo[key];
+        return `<div class="abilityRow"><span class="abilityIcon">${info.icon}</span><div><strong>${info.label}</strong><p>${info.desc}</p></div></div>`;
+    }).join('');
+    return `<div class="abilitySummary">${rows}</div>`;
 }
 
 // Restore class-selection screen after play again
@@ -331,7 +319,7 @@ class Character {
 
     if (target.isDefending) {
         const blockSuccess = Math.random() < defend_block_chance;
-        target.lastDefendBlocked = blockSuccess;
+        if (!isFollowUp) target.lastDefendBlocked = blockSuccess;
 
         if (blockSuccess) {
             blockedByDefense = true;
@@ -423,11 +411,11 @@ class Character {
 let player = new Character('', 0, [0, 0], '', 0);
 
 const enemyLibrary = [
-    {name: 'Magician', healthRange: [40,48], attackRange: [14, 20], charClass: 'Magician', potions: 3},
-    {name: 'Gorgon', healthRange: [32,40], attackRange: [6, 12], charClass: 'Gorgon', potions: 1},
-    {name: 'Minotaur', healthRange: [24,48], attackRange: [6, 14], charClass: 'Minotaur', potions: 0},
-    {name: 'Werewolf', healthRange: [38,48], attackRange: [10, 22], charClass: 'Werewolf', potions: 0},
-    {name: 'Skeleton', healthRange: [40,48], attackRange: [12, 20], charClass: 'Skeleton', potions: 0},
+    { name: 'Magician',  health: 44, attack: [14, 20], charClass: 'Magician',  potions: 3 },
+    { name: 'Gorgon',    health: 36, attack: [6,  12], charClass: 'Gorgon',    potions: 1 },
+    { name: 'Minotaur',  health: 40, attack: [8,  14], charClass: 'Minotaur',  potions: 0 },
+    { name: 'Werewolf',  health: 42, attack: [10, 18], charClass: 'Werewolf',  potions: 0 },
+    { name: 'Skeleton',  health: 44, attack: [12, 18], charClass: 'Skeleton',  potions: 0 },
 ];
 
 const enemyBehaviors = {
@@ -439,8 +427,8 @@ const enemyBehaviors = {
 
 const bossTemplate = {
     name: 'Ignis, The Beacon of False Hope',
-    healthRange: [220, 260],
-    attackRange: [30, 44],
+    health: 240,
+    attack: [30, 44],
     charClass: 'Boss',
     potions: 1
 };
@@ -458,10 +446,10 @@ function spawnBoss(bossNumber) {
         difficultyScale = Math.min(difficultyScale, first_boss_scale_cap);
     }
 
-    const health = Math.round(getRandomInt(bossTemplate.healthRange[0], bossTemplate.healthRange[1]) * difficultyScale);
+    const health = Math.round(bossTemplate.health * difficultyScale);
     const attackRange = [
-        Math.round(bossTemplate.attackRange[0] * difficultyScale),
-        Math.round(bossTemplate.attackRange[1] * difficultyScale)
+        Math.round(bossTemplate.attack[0] * difficultyScale),
+        Math.round(bossTemplate.attack[1] * difficultyScale)
     ];
     const bossName = bossNumber > 1 ? `${bossTemplate.name} (Tier ${bossNumber})` : bossTemplate.name;
 
@@ -479,29 +467,28 @@ function spawnNextEncounter() {
 }
 
 const playerConfigs = {
-    Knight: {healthRange: [55,75], attackRange: [16, 26], potions: 0},
-    Magician: {healthRange: [50, 70], attackRange: [20, 30], potions: 3},
-    Samurai: {healthRange: [70, 80], attackRange: [14, 22], potions: 0}
+    Knight:   { health: 65, attackRange: [16, 26], potions: 0 },
+    Magician: { health: 55, attackRange: [20, 30], potions: 3 },
+    Samurai:  { health: 70, attackRange: [14, 22], potions: 0 }
 };
 
 function initPlayer(name, charClass) {
     const config = playerConfigs[charClass];
     const mods = getPlayerDifficultyMods();
-    const baseHp = getRandomInt(config.healthRange[0], config.healthRange[1]);
-    const hp = Math.max(1, Math.round(baseHp * mods.healthMult));
+    const hp = Math.max(1, Math.round(config.health * mods.healthMult));
     const finalName = name.trim();
     const playerCharacter = new Character(finalName, hp, config.attackRange, charClass, config.potions);
     playerCharacter.isEnemy = false;
     return playerCharacter;
 }
 
-function spawnRandomEnemy(){
+function spawnRandomEnemy() {
     const template = enemyLibrary[Math.floor(Math.random() * enemyLibrary.length)];
     const mult = difficultyMultipliers[gameSettings.difficulty] ?? 1;
-    const health = Math.round(getRandomInt(template.healthRange[0], template.healthRange[1]) * mult);
+    const health = Math.round(template.health * mult);
     const attackRange = [
-        Math.round(template.attackRange[0] * mult),
-        Math.round(template.attackRange[1] * mult)
+        Math.round(template.attack[0] * mult),
+        Math.round(template.attack[1] * mult)
     ];
     const enemy = new Character(template.name, health, attackRange, template.charClass, template.potions);
     enemy.isEnemy = true;
@@ -581,105 +568,49 @@ function toggleButtons(disabled){
 }
 
 beginAdventureButton.addEventListener('click', () => {
-    showLoreScreen(player.charClass);
+    playIntroCinematic(player.charClass);
 });
 
-let loreRunId = 0;
-let loreSkipRequested = false;
+let introRunId = 0;
 
-function showLoreScreen(charClass) {
-    loreRunId++;
-    const thisRun = loreRunId;
-    loreSkipRequested = false;
+async function playIntroCinematic(charClass) {
+    introRunId++;
+    const thisRun = introRunId;
 
     startScreen.style.display = 'none';
-    loreScreen.style.display = 'block';
+    loreScreen.style.display = 'flex';
+    introLine.classList.remove('visible');
+    introLine.textContent = `${player.name} the ${charClass} begins their journey into the unknown world of magic and monsters...`;
 
-    loreTitle.textContent = `${player.name} the ${charClass}`;
-    loreText.innerHTML = '';
-    loreAbilities.innerHTML = '';
-    loreAbilities.classList.remove('visible');
-    loreBeginButton.style.display = 'none';
+    // Let the black screen sit for a beat before the line appears — builds a little tension
+    await sleep(500);
+    if (thisRun !== introRunId) return;
 
-    const sentences = classLore[charClass] || classLore.Knight;
-    runLoreSequence(sentences, thisRun);
+    void introLine.offsetWidth; // force reflow so the fade-in transition restarts cleanly
+    introLine.classList.add('visible');
+
+    await sleep(2800);
+    if (thisRun !== introRunId) return;
+
+    introLine.classList.remove('visible');
+    await sleep(900); // let the line fade back to black before cutting to battle
+    if (thisRun !== introRunId) return;
+
+    loreScreen.style.display = 'none';
+    startGame();
 }
 
-// Sleeps for `ms`, but returns early if the reader hits Skip — keeps skip feeling instant
-async function sleepUnlessSkipped(ms) {
-    const step = 50;
-    let elapsed = 0;
-    while (elapsed < ms) {
-        if (loreSkipRequested) return;
-        await sleep(Math.min(step, ms - elapsed));
-        elapsed += step;
-    }
-}
-
-function appendLoreSentence(text) {
-    const line = document.createElement('p');
-    line.className = 'loreSentence';
-    line.textContent = text;
-    loreText.appendChild(line);
-    void line.offsetWidth; // force reflow so the fade-in transition actually plays
-    line.classList.add('visible');
-}
-
-async function runLoreSequence(sentences, runId) {
-    for (let i = 0; i < sentences.length; i++) {
-        if (runId !== loreRunId) return;
-
-        if (loreSkipRequested) {
-            for (let j = i; j < sentences.length; j++) appendLoreSentence(sentences[j]);
-            break;
-        }
-
-        appendLoreSentence(sentences[i]);
-        await sleepUnlessSkipped(500);
-        if (runId !== loreRunId) return;
-
-        if (loreSkipRequested) {
-            for (let j = i + 1; j < sentences.length; j++) appendLoreSentence(sentences[j]);
-            break;
-        }
-
-        const holdTime = Math.min(Math.max(sentences[i].length * text_delay_multiplier, 900), max_text_delay);
-        await sleepUnlessSkipped(holdTime);
-    }
-
-    if (runId !== loreRunId) return;
-    revealAbilitySummary(player.charClass, runId);
-}
-
-function revealAbilitySummary(charClass, runId) {
-    const abilities = getClassAbilities(charClass);
-    loreAbilities.innerHTML = abilities.map(key => {
-        if (key === 'special') {
-            const move = classSpecialMoves[charClass];
-            return `<div class="loreAbilityRow"><span class="loreAbilityIcon">${move.icon}</span><div><strong>${move.summaryLabel}</strong><p>${move.summaryDesc}</p></div></div>`;
-        }
-        const info = classAbilityInfo[key];
-        return `<div class="loreAbilityRow"><span class="loreAbilityIcon">${info.icon}</span><div><strong>${info.label}</strong><p>${info.desc}</p></div></div>`;
-    }).join('');
-
-    requestAnimationFrame(() => {
-        if (runId !== loreRunId) return;
-        loreAbilities.classList.add('visible');
-        loreBeginButton.style.display = 'inline-block';
-    });
-}
-
-loreSkipButton.addEventListener('click', () => {
-    loreSkipRequested = true;
-});
-
-loreBeginButton.addEventListener('click', () => {
+// Clicking anywhere on the black screen skips straight to battle
+loreScreen.addEventListener('click', () => {
+    introRunId++; // invalidates the in-progress cinematic timeline
     loreScreen.style.display = 'none';
     startGame();
 });
 
 async function startGame() {
-    startScreen.style.display = 'none';
+    battleScreen.classList.remove('cinematicEntry');
+    void battleScreen.offsetWidth; // force reflow so the entry animation restarts cleanly
+    battleScreen.classList.add('cinematicEntry');
     battleScreen.style.display = 'block';
     player.baseX = canvas.width * 0.25;
     player.baseY = canvas.height - 40 - character_lift;
@@ -828,6 +759,8 @@ defendButton.addEventListener('click', async () => {
 
     // If the block succeeded and the player is still standing, they get a bonus counter-attack
     if (player.health > 0 && player.lastDefendBlocked && currentEnemy.health > 0) {
+        toggleButtons(true); // re-disable — enemyTurn() re-enabled them, but counter hasn't fired yet
+        player.lastDefendBlocked = false;
         await writeSlowly(`${player.name} capitalizes on the opening and strikes back!`);
         player.hitsThisFight++;
         await player.attack(currentEnemy);
@@ -898,16 +831,14 @@ healButton.addEventListener('click', async () => {
 
 function resetGame() {
     battleScreen.style.display = 'none';
+    battleScreen.classList.remove('cinematicEntry');
     victoryScreen.style.display = 'none';
     defeatScreen.style.display = 'none';
     fleeScreen.style.display = 'none';
     loreScreen.style.display = 'none';
-    loreRunId++; // cancels any in-progress lore sequence
-    loreSkipRequested = false;
-    loreText.innerHTML = '';
-    loreAbilities.classList.remove('visible');
-    loreAbilities.innerHTML = '';
-    loreBeginButton.style.display = 'none';
+    introRunId++; // cancels any in-progress cinematic intro
+    introLine.classList.remove('visible');
+    introLine.textContent = '';
     document.getElementById('confettiContainer').innerHTML = '';
     startScreen.style.display = 'none';
     mainMenu.style.display = '';

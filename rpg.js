@@ -71,11 +71,7 @@ const confettiToggle = document.getElementById('confettiToggle');
 const volumeSlider = document.getElementById('volumeSlider');
 const backToMenuButton = document.getElementById('backToMenuButton');
 const loreScreen = document.getElementById('loreScreen');
-const loreTitle = document.getElementById('loreTitle');
-const loreText = document.getElementById('loreText');
-const loreAbilities = document.getElementById('loreAbilities');
-const loreSkipButton = document.getElementById('loreSkipButton');
-const loreBeginButton = document.getElementById('loreBeginButton');
+const introLine = document.getElementById('introLine');
 
 // Game Stats
 let selectedClass = '';
@@ -118,41 +114,20 @@ const class_icons = {
     Samurai: '🥷🏻'
 };
 
-// Lore intro screen
-const classLore = {
-    Knight: [
-        "The kingdom's outer villages have gone quiet — too quiet.",
-        "Farmers speak of shapes moving at the treeline where no shapes should be.",
-        "You were trained for exactly this moment: to stand between darkness and the innocent.",
-        "Shield raised and faith unshaken, you set out toward the borderlands."
-    ],
-    Magician: [
-        "The old tomes warned of a rot spreading beneath the hills.",
-        "Your masters dismissed it as superstition — until the messengers stopped returning.",
-        "You alone answered the call, spellbook bound tight against your hip.",
-        "Whatever waits in the dark has never faced power quite like yours."
-    ],
-    Samurai: [
-        "Your clan's banner has not flown in open battle for a generation.",
-        "But the reports from the eastern road can no longer be ignored.",
-        "You sharpen your blade in silence, recalling your teacher's final lesson.",
-        "Discipline. Patience. Strike only when the moment is true."
-    ]
-};
-
+// Lore intro screen — class-specific story beats and ability blurbs
 const classAbilityInfo = {
     attack: { icon: '⚔️', label: 'Attack', desc: 'Strike your foe for damage based on your weapon and level.' },
     defend: { icon: '🛡️', label: 'Defend', desc: 'Brace for the blow — a good chance to block most of the damage, then strike back.' },
     heal: { icon: '🧪', label: 'Heal', desc: 'Drink a potion to restore health mid-battle.' }
 };
 
-// Each class's Special Attack
+// Each class's Special Attack. Classes without an entry here simply don't get the button yet.
 const classSpecialMoves = {
     Knight: {
         label: '💥 Power Swipe',
         icon: '💥',
         summaryLabel: 'Power Swipe',
-        summaryDesc: 'A devastating strike wreathed in blue-violet light, dealing 2-3x normal damage. Needs 3 turns to recharge after use.',
+        summaryDesc: 'A devastating overhead strike wreathed in blue-violet light, dealing 2-3x normal damage. Needs 3 turns to recharge after use.',
         cooldownTurns: 3,
         async execute(user, target) {
             const attackConfig = window.animConfig?.[user.charClass]?.attacking;
@@ -173,7 +148,7 @@ const classSpecialMoves = {
             await user.siphon(target);
         }
     }
-    // Samurai special
+    // Samurai special coming later
 };
 function getClassAbilities(charClass) {
     const abilities = ['attack'];
@@ -205,11 +180,24 @@ function updateCharacterCard() {
         <strong>⚔️ </strong> ${player.attackRange[0]}-${player.attackRange[1]}<br><br>
         <strong>🧪 </strong> ${player.potions}<br><br>
         <strong>🎚️ </strong> ${gameSettings.difficulty}`;
-    document.getElementById("classStats").innerHTML = '';
+    document.getElementById("classStats").innerHTML = renderAbilitySummaryHTML(player.charClass);
     document.getElementById("heroSetup").style.display = "none";
     beginAdventureButton.style.display = "inline-block";
     document.querySelectorAll(".classButton").forEach(button=>{button.disabled = true; });
     document.getElementById("portrait").style.display = "none";
+}
+
+function renderAbilitySummaryHTML(charClass) {
+    const abilities = getClassAbilities(charClass);
+    const rows = abilities.map(key => {
+        if (key === 'special') {
+            const move = classSpecialMoves[charClass];
+            return `<div class="abilityRow"><span class="abilityIcon">${move.icon}</span><div><strong>${move.summaryLabel}</strong><p>${move.summaryDesc}</p></div></div>`;
+        }
+        const info = classAbilityInfo[key];
+        return `<div class="abilityRow"><span class="abilityIcon">${info.icon}</span><div><strong>${info.label}</strong><p>${info.desc}</p></div></div>`;
+    }).join('');
+    return `<div class="abilitySummary">${rows}</div>`;
 }
 
 // Restore class-selection screen after play again
@@ -331,7 +319,7 @@ class Character {
 
     if (target.isDefending) {
         const blockSuccess = Math.random() < defend_block_chance;
-        target.lastDefendBlocked = blockSuccess;
+        if (!isFollowUp) target.lastDefendBlocked = blockSuccess;
 
         if (blockSuccess) {
             blockedByDefense = true;
@@ -581,105 +569,49 @@ function toggleButtons(disabled){
 }
 
 beginAdventureButton.addEventListener('click', () => {
-    showLoreScreen(player.charClass);
+    playIntroCinematic(player.charClass);
 });
 
-let loreRunId = 0;
-let loreSkipRequested = false;
+let introRunId = 0;
 
-function showLoreScreen(charClass) {
-    loreRunId++;
-    const thisRun = loreRunId;
-    loreSkipRequested = false;
+async function playIntroCinematic(charClass) {
+    introRunId++;
+    const thisRun = introRunId;
 
     startScreen.style.display = 'none';
-    loreScreen.style.display = 'block';
+    loreScreen.style.display = 'flex';
+    introLine.classList.remove('visible');
+    introLine.textContent = `${player.name} the ${charClass} begins their journey into the unknown world of magic and monsters...`;
 
-    loreTitle.textContent = `${player.name} the ${charClass}`;
-    loreText.innerHTML = '';
-    loreAbilities.innerHTML = '';
-    loreAbilities.classList.remove('visible');
-    loreBeginButton.style.display = 'none';
+    // Let the black screen sit for a beat before the line appears — builds a little tension
+    await sleep(500);
+    if (thisRun !== introRunId) return;
 
-    const sentences = classLore[charClass] || classLore.Knight;
-    runLoreSequence(sentences, thisRun);
+    void introLine.offsetWidth; // force reflow so the fade-in transition restarts cleanly
+    introLine.classList.add('visible');
+
+    await sleep(2800);
+    if (thisRun !== introRunId) return;
+
+    introLine.classList.remove('visible');
+    await sleep(900); // let the line fade back to black before cutting to battle
+    if (thisRun !== introRunId) return;
+
+    loreScreen.style.display = 'none';
+    startGame();
 }
 
-// Sleeps for `ms`, but returns early if the reader hits Skip — keeps skip feeling instant
-async function sleepUnlessSkipped(ms) {
-    const step = 50;
-    let elapsed = 0;
-    while (elapsed < ms) {
-        if (loreSkipRequested) return;
-        await sleep(Math.min(step, ms - elapsed));
-        elapsed += step;
-    }
-}
-
-function appendLoreSentence(text) {
-    const line = document.createElement('p');
-    line.className = 'loreSentence';
-    line.textContent = text;
-    loreText.appendChild(line);
-    void line.offsetWidth; // force reflow so the fade-in transition actually plays
-    line.classList.add('visible');
-}
-
-async function runLoreSequence(sentences, runId) {
-    for (let i = 0; i < sentences.length; i++) {
-        if (runId !== loreRunId) return;
-
-        if (loreSkipRequested) {
-            for (let j = i; j < sentences.length; j++) appendLoreSentence(sentences[j]);
-            break;
-        }
-
-        appendLoreSentence(sentences[i]);
-        await sleepUnlessSkipped(500);
-        if (runId !== loreRunId) return;
-
-        if (loreSkipRequested) {
-            for (let j = i + 1; j < sentences.length; j++) appendLoreSentence(sentences[j]);
-            break;
-        }
-
-        const holdTime = Math.min(Math.max(sentences[i].length * text_delay_multiplier, 900), max_text_delay);
-        await sleepUnlessSkipped(holdTime);
-    }
-
-    if (runId !== loreRunId) return;
-    revealAbilitySummary(player.charClass, runId);
-}
-
-function revealAbilitySummary(charClass, runId) {
-    const abilities = getClassAbilities(charClass);
-    loreAbilities.innerHTML = abilities.map(key => {
-        if (key === 'special') {
-            const move = classSpecialMoves[charClass];
-            return `<div class="loreAbilityRow"><span class="loreAbilityIcon">${move.icon}</span><div><strong>${move.summaryLabel}</strong><p>${move.summaryDesc}</p></div></div>`;
-        }
-        const info = classAbilityInfo[key];
-        return `<div class="loreAbilityRow"><span class="loreAbilityIcon">${info.icon}</span><div><strong>${info.label}</strong><p>${info.desc}</p></div></div>`;
-    }).join('');
-
-    requestAnimationFrame(() => {
-        if (runId !== loreRunId) return;
-        loreAbilities.classList.add('visible');
-        loreBeginButton.style.display = 'inline-block';
-    });
-}
-
-loreSkipButton.addEventListener('click', () => {
-    loreSkipRequested = true;
-});
-
-loreBeginButton.addEventListener('click', () => {
+// Clicking anywhere on the black screen skips straight to battle
+loreScreen.addEventListener('click', () => {
+    introRunId++; // invalidates the in-progress cinematic timeline
     loreScreen.style.display = 'none';
     startGame();
 });
 
 async function startGame() {
-    startScreen.style.display = 'none';
+    battleScreen.classList.remove('cinematicEntry');
+    void battleScreen.offsetWidth; // force reflow so the entry animation restarts cleanly
+    battleScreen.classList.add('cinematicEntry');
     battleScreen.style.display = 'block';
     player.baseX = canvas.width * 0.25;
     player.baseY = canvas.height - 40 - character_lift;
@@ -828,6 +760,8 @@ defendButton.addEventListener('click', async () => {
 
     // If the block succeeded and the player is still standing, they get a bonus counter-attack
     if (player.health > 0 && player.lastDefendBlocked && currentEnemy.health > 0) {
+        toggleButtons(true); // re-disable — enemyTurn() re-enabled them, but counter hasn't fired yet
+        player.lastDefendBlocked = false;
         await writeSlowly(`${player.name} capitalizes on the opening and strikes back!`);
         player.hitsThisFight++;
         await player.attack(currentEnemy);
@@ -898,16 +832,14 @@ healButton.addEventListener('click', async () => {
 
 function resetGame() {
     battleScreen.style.display = 'none';
+    battleScreen.classList.remove('cinematicEntry');
     victoryScreen.style.display = 'none';
     defeatScreen.style.display = 'none';
     fleeScreen.style.display = 'none';
     loreScreen.style.display = 'none';
-    loreRunId++; // cancels any in-progress lore sequence
-    loreSkipRequested = false;
-    loreText.innerHTML = '';
-    loreAbilities.classList.remove('visible');
-    loreAbilities.innerHTML = '';
-    loreBeginButton.style.display = 'none';
+    introRunId++; // cancels any in-progress cinematic intro
+    introLine.classList.remove('visible');
+    introLine.textContent = '';
     document.getElementById('confettiContainer').innerHTML = '';
     startScreen.style.display = 'none';
     mainMenu.style.display = '';

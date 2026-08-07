@@ -411,11 +411,11 @@ class Character {
 let player = new Character('', 0, [0, 0], '', 0);
 
 const enemyLibrary = [
-    {name: 'Magician', healthRange: [40,48], attackRange: [14, 20], charClass: 'Magician', potions: 3},
-    {name: 'Gorgon', healthRange: [32,40], attackRange: [6, 12], charClass: 'Gorgon', potions: 1},
-    {name: 'Minotaur', healthRange: [24,48], attackRange: [6, 14], charClass: 'Minotaur', potions: 0},
-    {name: 'Werewolf', healthRange: [38,48], attackRange: [10, 22], charClass: 'Werewolf', potions: 0},
-    {name: 'Skeleton', healthRange: [40,48], attackRange: [12, 20], charClass: 'Skeleton', potions: 0},
+    { name: 'Magician',  health: 44, attack: [14, 20], charClass: 'Magician',  potions: 3 },
+    { name: 'Gorgon',    health: 36, attack: [6,  12], charClass: 'Gorgon',    potions: 1 },
+    { name: 'Minotaur',  health: 40, attack: [8,  14], charClass: 'Minotaur',  potions: 0 },
+    { name: 'Werewolf',  health: 42, attack: [10, 18], charClass: 'Werewolf',  potions: 0 },
+    { name: 'Skeleton',  health: 44, attack: [12, 18], charClass: 'Skeleton',  potions: 0 },
 ];
 
 const enemyBehaviors = {
@@ -427,8 +427,8 @@ const enemyBehaviors = {
 
 const bossTemplate = {
     name: 'Ignis, The Beacon of False Hope',
-    healthRange: [220, 260],
-    attackRange: [30, 44],
+    health: 240,
+    attack: [30, 44],
     charClass: 'Boss',
     potions: 1
 };
@@ -446,10 +446,10 @@ function spawnBoss(bossNumber) {
         difficultyScale = Math.min(difficultyScale, first_boss_scale_cap);
     }
 
-    const health = Math.round(getRandomInt(bossTemplate.healthRange[0], bossTemplate.healthRange[1]) * difficultyScale);
+    const health = Math.round(bossTemplate.health * difficultyScale);
     const attackRange = [
-        Math.round(bossTemplate.attackRange[0] * difficultyScale),
-        Math.round(bossTemplate.attackRange[1] * difficultyScale)
+        Math.round(bossTemplate.attack[0] * difficultyScale),
+        Math.round(bossTemplate.attack[1] * difficultyScale)
     ];
     const bossName = bossNumber > 1 ? `${bossTemplate.name} (Tier ${bossNumber})` : bossTemplate.name;
 
@@ -467,29 +467,28 @@ function spawnNextEncounter() {
 }
 
 const playerConfigs = {
-    Knight: {healthRange: [55,75], attackRange: [16, 26], potions: 0},
-    Magician: {healthRange: [50, 70], attackRange: [20, 30], potions: 3},
-    Samurai: {healthRange: [70, 80], attackRange: [14, 22], potions: 0}
+    Knight:   { health: 65, attackRange: [16, 26], potions: 0 },
+    Magician: { health: 55, attackRange: [20, 30], potions: 3 },
+    Samurai:  { health: 70, attackRange: [14, 22], potions: 0 }
 };
 
 function initPlayer(name, charClass) {
     const config = playerConfigs[charClass];
     const mods = getPlayerDifficultyMods();
-    const baseHp = getRandomInt(config.healthRange[0], config.healthRange[1]);
-    const hp = Math.max(1, Math.round(baseHp * mods.healthMult));
+    const hp = Math.max(1, Math.round(config.health * mods.healthMult));
     const finalName = name.trim();
     const playerCharacter = new Character(finalName, hp, config.attackRange, charClass, config.potions);
     playerCharacter.isEnemy = false;
     return playerCharacter;
 }
 
-function spawnRandomEnemy(){
+function spawnRandomEnemy() {
     const template = enemyLibrary[Math.floor(Math.random() * enemyLibrary.length)];
     const mult = difficultyMultipliers[gameSettings.difficulty] ?? 1;
-    const health = Math.round(getRandomInt(template.healthRange[0], template.healthRange[1]) * mult);
+    const health = Math.round(template.health * mult);
     const attackRange = [
-        Math.round(template.attackRange[0] * mult),
-        Math.round(template.attackRange[1] * mult)
+        Math.round(template.attack[0] * mult),
+        Math.round(template.attack[1] * mult)
     ];
     const enemy = new Character(template.name, health, attackRange, template.charClass, template.potions);
     enemy.isEnemy = true;

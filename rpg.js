@@ -147,9 +147,21 @@ const classSpecialMoves = {
         async execute(user, target) {
             await user.siphon(target);
         }
+    },
+    Samurai: {
+    label: '👥 Shadow Strike',
+    icon: '👥',
+    summaryLabel: 'Shadow Strike',
+    summaryDesc: 'Summon two shadow clones — all three Samurai strike at once dealing 3x damage. 5-turn cooldown.',
+    cooldownTurns: 5,
+    async execute(user, target) {
+        spawnTripleSamuraiEffect(user);
+        await writeSlowly(`${user.name} splits into three — shadows and steel strike as one!`);
+        await user.attack(target, false, 3);
+        }
     }
-    // Samurai special coming later
 };
+
 function getClassAbilities(charClass) {
     const abilities = ['attack'];
     if (defend_allowed_classes.includes(charClass)) abilities.push('defend');

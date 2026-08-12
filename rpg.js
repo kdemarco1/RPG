@@ -94,17 +94,17 @@ const class_info = {
     Knight: {
         portrait: '🗡️',
         description: 'A powerful warrior who relies on armor and strength',
-        stats: 'Health: High<br><br>Attack: Medium-High'
+        stats: ''
     },
     Magician: {
         portrait: '🧙🏼‍♂️',
         description: 'A spellcaster with devastating attacks',
-        stats: 'Health: Low<br><br>Attack: High'
+        stats: ''
     },
     Samurai: {
         portrait: '🥷🏻',
         description: 'An adaptable warrior wielding reliable offensive strikes and moderate resilience',
-        stats: 'Health: Medium<br><br>Attack: Medium'
+        stats: ''
     }
 };
 
@@ -132,7 +132,7 @@ const classSpecialMoves = {
         async execute(user, target) {
             const attackConfig = window.animConfig?.[user.charClass]?.attacking;
             const swingDuration = attackConfig ? attackConfig.frames * attackConfig.speed : 60;
-            const returnBuffer = 30; // extra frames to hold the glow through the ease-back-to-idle movement
+            const returnBuffer = 90; // extra frames to hold the glow through the ease-back-to-idle movement
             spawnPowerSwipeEffect(user, swingDuration + returnBuffer);
             await writeSlowly(`${user.name}'s blade glows with blue-violet light as they wind up a mighty swipe!`);
             const multiplier = 2 + Math.random(); // 2x - 3x normal damage
@@ -147,9 +147,24 @@ const classSpecialMoves = {
         async execute(user, target) {
             await user.siphon(target);
         }
+    },
+    Samurai: {
+    label: '👥 Shadow Strike',
+    icon: '👥',
+    summaryLabel: 'Shadow Strike',
+    summaryDesc: 'Summon two shadow clones — all three Samurai strike at once dealing 3x damage. 5-turn cooldown.',
+    cooldownTurns: 5,
+    async execute(user, target) {
+    const attackConfig = window.animConfig?.[user.charClass]?.attacking;
+    const swingDuration = attackConfig ? attackConfig.frames * attackConfig.speed : 60;
+    const returnBuffer = 185; // extra frames to hold through the ease-back-to-idle
+    spawnTripleSamuraiEffect(user, swingDuration + returnBuffer);
+    await writeSlowly(`${user.name} splits into three — shadows and steel strike as one!`);
+    await user.attack(target, false, 3);
+    }   
     }
-    // Samurai special coming later
 };
+
 function getClassAbilities(charClass) {
     const abilities = ['attack'];
     if (defend_allowed_classes.includes(charClass)) abilities.push('defend');
@@ -326,7 +341,6 @@ class Character {
             const [minMult, maxMult] = defend_damage_multiplier_range;
             const mult = minMult + Math.random() * (maxMult - minMult);
             currentDamage = Math.max(1, Math.floor(currentDamage * mult));
-            spawnBlockEffect(target);
             await writeSlowly(`${target.name} blocks the attack from ${this.name}! Only ${currentDamage} damage gets through.`);
         } else {
             await writeSlowly(`${target.name} tries to block, but ${this.name} breaks through the guard! ${target.name} takes ${currentDamage} damage.`);
@@ -688,9 +702,6 @@ async function enemyTurn(){
     if (player.health <= 0){
         await handlePlayerDefeat();
     }
-    else {
-        toggleButtons(false);
-    }
 }
 
 async function handleEnemyDefeat(){
@@ -757,19 +768,9 @@ defendButton.addEventListener('click', async () => {
     await writeSlowly(`${player.name} braces for impact, watching for an opening!`);
     await enemyTurn();
 
-    // If the block succeeded and the player is still standing, they get a bonus counter-attack
-    if (player.health > 0 && player.lastDefendBlocked && currentEnemy.health > 0) {
-        toggleButtons(true); // re-disable — enemyTurn() re-enabled them, but counter hasn't fired yet
-        player.lastDefendBlocked = false;
-        await writeSlowly(`${player.name} capitalizes on the opening and strikes back!`);
-        player.hitsThisFight++;
-        await player.attack(currentEnemy);
-        updateBattleUI();
-
-        if (currentEnemy.health <= 0) {
-            await handleEnemyDefeat();
-            return;
-        }
+    player.isDefending = false;
+    player.lastDefendBlocked = false;
+    if (player.health > 0) {
         toggleButtons(false);
     }
 });

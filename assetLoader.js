@@ -143,9 +143,9 @@ window.animConfig = {
     Samurai: {
         idle: { frames: 6, speed: 20, visualHeight: 150, offsetX: 55 },
         attacking: { frames: 4, speed: 15, visualHeight: 150, offsetX: 55 },
-        hurt: { frames: 3, speed: 50, visualHeight: 150, offsetX: 55 },
+        hurt: { frames: 3, speed: 50, visualHeight: 150, offsetX: 0 },
         dead: { frames: 6, speed: 8, visualHeight: 150, offsetX: 55 },
-        defending: { frames: 2, speed: 50, visualHeight: 150, offsetX: 55 }
+        defending: { frames: 2, speed: 50, visualHeight: 150, offsetX: -28}
     },
     Boss: {
         idle: { frames: 7, speed: 20, visualHeight: 150, offsetX: 10},

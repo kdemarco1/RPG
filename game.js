@@ -5,6 +5,8 @@ const damagePopUps = [];
 const siphonEffects = [];
 const blockEffects = [];
 const powerSwipeEffects = [];
+const counterStanceEffects = [];
+const tripleSamuraiEffects = [];
 
 function easeOutBack(t) {
     const c1 = 1.70158;
@@ -42,6 +44,15 @@ function spawnPowerSwipeEffect(actor, duration = 34) {
         burstDuration: Math.min(24, duration) // the radial flash only plays at the very start
     });
 }
+
+function spawnTripleSamuraiEffect(actor, duration = 40) {
+    tripleSamuraiEffects.push({
+        actor,
+        life: duration,
+        maxLife: duration
+    });
+}
+
 
 // Ramps 0->1, holds at 1, then ramps back to 0 — for effects that should stay "on" through
 // an action instead of a symmetric pulse that peaks in the middle and fades early.
@@ -157,6 +168,9 @@ function updateMovement(actor, target) {
     } else if (actor.visualState === "hurt") {
         actor.x = actor.baseX + (Math.random() - 0.5) * GAME_CONFIG.actor.shakeIntensity;
         actor.y = actor.baseY;
+    } else if (actor.isDefending) {
+        actor.x = actor.baseX;
+        actor.y = actor.baseY;
     } else {
         const dx = actor.baseX - actor.x;
         actor.x += dx * GAME_CONFIG.actor.returnSpeed;
@@ -184,6 +198,13 @@ function updateActor(actor, target) {
 
 function getActivePowerSwipeGlow(actor) {
     for (const effect of powerSwipeEffects) {
+        if (effect.actor === actor && effect.life > 0) return effect;
+    }
+    return null;
+}
+
+function getActiveTripleSamuraiGlow(actor) {
+    for (const effect of tripleSamuraiEffects) {
         if (effect.actor === actor && effect.life > 0) return effect;
     }
     return null;
@@ -246,6 +267,14 @@ function drawSprite(actor, spriteAlpha, scale, rotation, yOffset) {
         const livingPulse = Math.sin(performance.now() * 0.012) * 3;
         ctx.shadowColor = "#8a5cff";
         ctx.shadowBlur = 10 + glowStrength * 22 + livingPulse;
+    }
+    const tripleGlow = getActiveTripleSamuraiGlow(actor);
+    if (tripleGlow) {
+        const p = 1 - tripleGlow.life / tripleGlow.maxLife;
+        const strength = fadeInHoldOut(p);
+        const pulse = Math.sin(performance.now() * 0.014) * 3;
+        ctx.shadowColor = "#f5d060";
+        ctx.shadowBlur = 10 + strength * 22 + pulse;
     } else if (actor.visualState === "hurt" && actor.health > 0) {
         ctx.shadowColor = "#e74c3c";
         ctx.shadowBlur = 20;
@@ -290,13 +319,12 @@ function getSpriteHeight(actor) {
     return sprite ? sprite.height * 2 * visualScale : 80;
 }
 
-function drawHealthBar(actor, hpPercent, yOffset) {
-
+function drawHealthBar(actor, hpPercent, yOffset, spriteOffsetX = 0) {
     const width = actor.isBoss ? GAME_CONFIG.ui.healthBarWidth * 2 : GAME_CONFIG.ui.healthBarWidth;
     const height = actor.isBoss ? GAME_CONFIG.ui.healthBarHeight * 1.5 : GAME_CONFIG.ui.healthBarHeight;
 
     ctx.save();
-    ctx.translate(actor.x, actor.y + yOffset);
+    ctx.translate(actor.x + spriteOffsetX, actor.y + yOffset);
 
     const spriteHeight = getSpriteHeight(actor);
     const x = -width / 2 - 6;
@@ -315,9 +343,9 @@ function drawHealthBar(actor, hpPercent, yOffset) {
     ctx.restore();
 }
 
-function drawActorName(actor, yOffset) {
+function drawActorName(actor, yOffset, spriteOffsetX = 0) {
     ctx.save();
-    ctx.translate(actor.x, actor.y + yOffset);
+    ctx.translate(actor.x + spriteOffsetX, actor.y + yOffset);
 
     ctx.fillStyle = "#ecf0f1";
     ctx.font = "bold 14px monospace";
@@ -334,11 +362,11 @@ function drawActorName(actor, yOffset) {
     ctx.restore();
 }
 
-function drawPotionCount(actor, yOffset) {
+function drawPotionCount(actor, yOffset, spriteOffsetX = 0) {
     if (actor.potions <= 0) return;
 
     ctx.save();
-    ctx.translate(actor.x, actor.y + yOffset);
+    ctx.translate(actor.x + spriteOffsetX, actor.y + yOffset);
 
     ctx.fillStyle = "#a0d094";
     ctx.font = "bold 11px monospace";
@@ -356,38 +384,19 @@ function drawPotionCount(actor, yOffset) {
 }
 
 function drawActor(actor) {
-
-    if (!actor || actor.deathComplete)
-        return;
-    let shadowAlpha = 0.5;
+    if (!actor || actor.deathComplete) return;
     let spriteAlpha = 1;
     let rotation = 0;
     let yOffset = 0;
     const scale = actor.isBoss ? GAME_CONFIG.actor.bossScale : 1;
-    drawSprite(
-        actor,
-        spriteAlpha,
-        scale,
-        rotation,
-        yOffset
-    );
-    if (actor.health <= 0)
-        return;
-    const hpPercent =
-        (actor.displayedHealth ?? actor.health) / actor.maxHealth;
-    drawHealthBar(
-        actor,
-        hpPercent,
-        yOffset
-    );
-    drawPotionCount(
-        actor,
-        yOffset
-    );
-    drawActorName(
-        actor,
-        yOffset
-    );
+    const spriteOffsetX = 0;
+    // Enemies are flipped, so their visual offset goes the opposite direction
+    drawSprite(actor, spriteAlpha, scale, rotation, yOffset);
+    if (actor.health <= 0) return;
+    const hpPercent = (actor.displayedHealth ?? actor.health) / actor.maxHealth;
+    drawHealthBar(actor, hpPercent, yOffset, spriteOffsetX);
+    drawPotionCount(actor, yOffset, spriteOffsetX);
+    drawActorName(actor, yOffset, spriteOffsetX);
 }
 
 function drawBlockEffects() {
@@ -488,6 +497,59 @@ function drawPowerSwipeEffects() {
     }
 }
 
+function drawTripleSamuraiEffects() {
+    for (let i = tripleSamuraiEffects.length - 1; i >= 0; i--) {
+        const effect = tripleSamuraiEffects[i];
+        effect.life--;
+
+        if (effect.life <= 0 || !effect.actor) {
+            tripleSamuraiEffects.splice(i, 1);
+            continue;
+        }
+
+        const actor = effect.actor;
+        const progress = 1 - effect.life / effect.maxLife;
+        const alpha = fadeInHoldOut(progress, 0.04, 0.12) * 0.65;
+
+        // Mirror the real actor's live animation state exactly
+        const animKey = actor.currentAnim || 'idle';
+        const charSprites = loadedSprites[actor.charClass];
+        const characterConfig = window.animConfig?.[actor.charClass];
+        const config = characterConfig?.[animKey] || characterConfig?.idle;
+        const sprite = charSprites?.[animKey] || charSprites?.idle;
+
+        if (!sprite?.loaded || !config) continue;
+
+        const frameWidth = sprite.width / config.frames;
+        const frameIndex = actor.frameIndex ?? 0;
+        const drawScale = 2;
+        const offsetX = (config.offsetX || 0);
+        const offsetY = (config.offsetY || 0);
+
+        // Clones flank the real actor — use actor.x so they follow the lunge
+        const clonePositions = [actor.x - 72, actor.x + 72];
+
+        for (const cx of clonePositions) {
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.shadowColor = "#f5d060";
+            ctx.shadowBlur = 18;
+            ctx.translate(cx, actor.y);
+            // Same facing as player (player is not flipped, so no scale(-1,1))
+            ctx.drawImage(
+                sprite,
+                frameIndex * frameWidth, 0,
+                frameWidth, sprite.height,
+                -(frameWidth * drawScale) / 2 + offsetX,
+                -sprite.height * drawScale + offsetY,
+                frameWidth * drawScale,
+                sprite.height * drawScale
+            );
+            ctx.restore();
+        }
+    }
+}
+
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const now = performance.now();
@@ -509,7 +571,8 @@ function gameLoop() {
 
     drawBlockEffects();
     drawPowerSwipeEffects();
-
+    drawTripleSamuraiEffects();
+    
     for (let i = damagePopUps.length - 1; i >= 0; i--) {
         const popup = damagePopUps[i];
         popup.y += popup.velocityY;

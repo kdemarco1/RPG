@@ -132,7 +132,7 @@ const classSpecialMoves = {
         async execute(user, target) {
             const attackConfig = window.animConfig?.[user.charClass]?.attacking;
             const swingDuration = attackConfig ? attackConfig.frames * attackConfig.speed : 60;
-            const returnBuffer = 30; // extra frames to hold the glow through the ease-back-to-idle movement
+            const returnBuffer = 90; // extra frames to hold the glow through the ease-back-to-idle movement
             spawnPowerSwipeEffect(user, swingDuration + returnBuffer);
             await writeSlowly(`${user.name}'s blade glows with blue-violet light as they wind up a mighty swipe!`);
             const multiplier = 2 + Math.random(); // 2x - 3x normal damage
@@ -702,9 +702,6 @@ async function enemyTurn(){
     if (player.health <= 0){
         await handlePlayerDefeat();
     }
-    else {
-        toggleButtons(false);
-    }
 }
 
 async function handleEnemyDefeat(){
@@ -771,19 +768,9 @@ defendButton.addEventListener('click', async () => {
     await writeSlowly(`${player.name} braces for impact, watching for an opening!`);
     await enemyTurn();
 
-    // If the block succeeded and the player is still standing, they get a bonus counter-attack
-    if (player.health > 0 && player.lastDefendBlocked && currentEnemy.health > 0) {
-        toggleButtons(true); // re-disable — enemyTurn() re-enabled them, but counter hasn't fired yet
-        player.lastDefendBlocked = false;
-        await writeSlowly(`${player.name} capitalizes on the opening and strikes back!`);
-        player.hitsThisFight++;
-        await player.attack(currentEnemy);
-        updateBattleUI();
-
-        if (currentEnemy.health <= 0) {
-            await handleEnemyDefeat();
-            return;
-        }
+    player.isDefending = false;
+    player.lastDefendBlocked = false;
+    if (player.health > 0) {
         toggleButtons(false);
     }
 });

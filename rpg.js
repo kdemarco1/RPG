@@ -341,7 +341,6 @@ class Character {
             const [minMult, maxMult] = defend_damage_multiplier_range;
             const mult = minMult + Math.random() * (maxMult - minMult);
             currentDamage = Math.max(1, Math.floor(currentDamage * mult));
-            spawnBlockEffect(target);
             await writeSlowly(`${target.name} blocks the attack from ${this.name}! Only ${currentDamage} damage gets through.`);
         } else {
             await writeSlowly(`${target.name} tries to block, but ${this.name} breaks through the guard! ${target.name} takes ${currentDamage} damage.`);

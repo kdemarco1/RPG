@@ -168,6 +168,9 @@ function updateMovement(actor, target) {
     } else if (actor.visualState === "hurt") {
         actor.x = actor.baseX + (Math.random() - 0.5) * GAME_CONFIG.actor.shakeIntensity;
         actor.y = actor.baseY;
+    } else if (actor.isDefending) {
+        actor.x = actor.baseX;
+        actor.y = actor.baseY;
     } else {
         const dx = actor.baseX - actor.x;
         actor.x += dx * GAME_CONFIG.actor.returnSpeed;
@@ -316,13 +319,12 @@ function getSpriteHeight(actor) {
     return sprite ? sprite.height * 2 * visualScale : 80;
 }
 
-function drawHealthBar(actor, hpPercent, yOffset) {
-
+function drawHealthBar(actor, hpPercent, yOffset, spriteOffsetX = 0) {
     const width = actor.isBoss ? GAME_CONFIG.ui.healthBarWidth * 2 : GAME_CONFIG.ui.healthBarWidth;
     const height = actor.isBoss ? GAME_CONFIG.ui.healthBarHeight * 1.5 : GAME_CONFIG.ui.healthBarHeight;
 
     ctx.save();
-    ctx.translate(actor.x, actor.y + yOffset);
+    ctx.translate(actor.x + spriteOffsetX, actor.y + yOffset);
 
     const spriteHeight = getSpriteHeight(actor);
     const x = -width / 2 - 6;
@@ -341,9 +343,9 @@ function drawHealthBar(actor, hpPercent, yOffset) {
     ctx.restore();
 }
 
-function drawActorName(actor, yOffset) {
+function drawActorName(actor, yOffset, spriteOffsetX = 0) {
     ctx.save();
-    ctx.translate(actor.x, actor.y + yOffset);
+    ctx.translate(actor.x + spriteOffsetX, actor.y + yOffset);
 
     ctx.fillStyle = "#ecf0f1";
     ctx.font = "bold 14px monospace";
@@ -360,11 +362,11 @@ function drawActorName(actor, yOffset) {
     ctx.restore();
 }
 
-function drawPotionCount(actor, yOffset) {
+function drawPotionCount(actor, yOffset, spriteOffsetX = 0) {
     if (actor.potions <= 0) return;
 
     ctx.save();
-    ctx.translate(actor.x, actor.y + yOffset);
+    ctx.translate(actor.x + spriteOffsetX, actor.y + yOffset);
 
     ctx.fillStyle = "#a0d094";
     ctx.font = "bold 11px monospace";
@@ -382,38 +384,23 @@ function drawPotionCount(actor, yOffset) {
 }
 
 function drawActor(actor) {
-
-    if (!actor || actor.deathComplete)
-        return;
-    let shadowAlpha = 0.5;
+    if (!actor || actor.deathComplete) return;
     let spriteAlpha = 1;
     let rotation = 0;
     let yOffset = 0;
     const scale = actor.isBoss ? GAME_CONFIG.actor.bossScale : 1;
-    drawSprite(
-        actor,
-        spriteAlpha,
-        scale,
-        rotation,
-        yOffset
-    );
-    if (actor.health <= 0)
-        return;
-    const hpPercent =
-        (actor.displayedHealth ?? actor.health) / actor.maxHealth;
-    drawHealthBar(
-        actor,
-        hpPercent,
-        yOffset
-    );
-    drawPotionCount(
-        actor,
-        yOffset
-    );
-    drawActorName(
-        actor,
-        yOffset
-    );
+
+    const characterConfig = window.animConfig?.[actor.charClass] || window.animConfig?.Knight;
+    const rawOffsetX = (characterConfig?.idle?.offsetX || 0) * scale;
+    // Enemies are flipped, so their visual offset goes the opposite direction
+    const spriteOffsetX = actor.isEnemy ? -rawOffsetX : rawOffsetX;
+
+    drawSprite(actor, spriteAlpha, scale, rotation, yOffset);
+    if (actor.health <= 0) return;
+    const hpPercent = (actor.displayedHealth ?? actor.health) / actor.maxHealth;
+    drawHealthBar(actor, hpPercent, yOffset, spriteOffsetX);
+    drawPotionCount(actor, yOffset, spriteOffsetX);
+    drawActorName(actor, yOffset, spriteOffsetX);
 }
 
 function drawBlockEffects() {

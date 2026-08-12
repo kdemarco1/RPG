@@ -526,43 +526,47 @@ function drawTripleSamuraiEffects() {
 
         const actor = effect.actor;
         const progress = 1 - effect.life / effect.maxLife;
-        const alpha = Math.sin(progress * Math.PI) * 0.55;
-        const spriteHeight = getSpriteHeight(actor);
+        const alpha = fadeInHoldOut(progress, 0.04, 0.12) * 0.65;
+
+        // Mirror the real actor's live animation state exactly
+        const animKey = actor.currentAnim || 'idle';
         const charSprites = loadedSprites[actor.charClass];
         const characterConfig = window.animConfig?.[actor.charClass];
-        const config = characterConfig?.attacking || characterConfig?.idle;
-        const sprite = charSprites?.attacking || charSprites?.idle;
+        const config = characterConfig?.[animKey] || characterConfig?.idle;
+        const sprite = charSprites?.[animKey] || charSprites?.idle;
 
         if (!sprite?.loaded || !config) continue;
 
         const frameWidth = sprite.width / config.frames;
         const frameIndex = actor.frameIndex ?? 0;
         const drawScale = 2;
-        const offsets = [-55, 55]; // two clones flanking the real actor
+        const offsetX = (config.offsetX || 0);
+        const offsetY = (config.offsetY || 0);
 
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.shadowColor = "#f5d060";
-        ctx.shadowBlur = 14;
+        // Clones flank the real actor — use actor.x so they follow the lunge
+        const clonePositions = [actor.x - 72, actor.x + 72];
 
-        for (const xOffset of offsets) {
+        for (const cx of clonePositions) {
             ctx.save();
-            ctx.translate(actor.x + xOffset, actor.y);
-            ctx.scale(-1, 1); // flip to face enemy (actor is player so not flipped normally)
-            ctx.scale(-1, 1); // unflip — keep same facing as real actor
+            ctx.globalAlpha = alpha;
+            ctx.shadowColor = "#f5d060";
+            ctx.shadowBlur = 18;
+            ctx.translate(cx, actor.y);
+            // Same facing as player (player is not flipped, so no scale(-1,1))
             ctx.drawImage(
                 sprite,
-                frameIndex * frameWidth, 0, frameWidth, sprite.height,
-                -(frameWidth * drawScale) / 2 + (config.offsetX || 0),
-                -sprite.height * drawScale + (config.offsetY || 0),
-                frameWidth * drawScale, sprite.height * drawScale
+                frameIndex * frameWidth, 0,
+                frameWidth, sprite.height,
+                -(frameWidth * drawScale) / 2 + offsetX,
+                -sprite.height * drawScale + offsetY,
+                frameWidth * drawScale,
+                sprite.height * drawScale
             );
             ctx.restore();
         }
-
-        ctx.restore();
     }
 }
+
 function gameLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const now = performance.now();

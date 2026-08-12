@@ -155,10 +155,13 @@ const classSpecialMoves = {
     summaryDesc: 'Summon two shadow clones — all three Samurai strike at once dealing 3x damage. 5-turn cooldown.',
     cooldownTurns: 5,
     async execute(user, target) {
-        spawnTripleSamuraiEffect(user);
-        await writeSlowly(`${user.name} splits into three — shadows and steel strike as one!`);
-        await user.attack(target, false, 3);
-        }
+    const attackConfig = window.animConfig?.[user.charClass]?.attacking;
+    const swingDuration = attackConfig ? attackConfig.frames * attackConfig.speed : 60;
+    const returnBuffer = 45; // extra frames to hold through the ease-back-to-idle
+    spawnTripleSamuraiEffect(user, swingDuration + returnBuffer);
+    await writeSlowly(`${user.name} splits into three — shadows and steel strike as one!`);
+    await user.attack(target, false, 3);
+    }   
     }
 };
 

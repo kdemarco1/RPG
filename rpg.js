@@ -94,17 +94,17 @@ const class_info = {
     Knight: {
         portrait: '🗡️',
         description: 'A powerful warrior who relies on armor and strength',
-        stats: 'Health: High<br><br>Attack: Medium-High'
+        stats: ''
     },
     Magician: {
         portrait: '🧙🏼‍♂️',
         description: 'A spellcaster with devastating attacks',
-        stats: 'Health: Low<br><br>Attack: High'
+        stats: ''
     },
     Samurai: {
         portrait: '🥷🏻',
         description: 'An adaptable warrior wielding reliable offensive strikes and moderate resilience',
-        stats: 'Health: Medium<br><br>Attack: Medium'
+        stats: ''
     }
 };
 
@@ -157,7 +157,7 @@ const classSpecialMoves = {
     async execute(user, target) {
     const attackConfig = window.animConfig?.[user.charClass]?.attacking;
     const swingDuration = attackConfig ? attackConfig.frames * attackConfig.speed : 60;
-    const returnBuffer = 45; // extra frames to hold through the ease-back-to-idle
+    const returnBuffer = 185; // extra frames to hold through the ease-back-to-idle
     spawnTripleSamuraiEffect(user, swingDuration + returnBuffer);
     await writeSlowly(`${user.name} splits into three — shadows and steel strike as one!`);
     await user.attack(target, false, 3);

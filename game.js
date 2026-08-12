@@ -389,12 +389,8 @@ function drawActor(actor) {
     let rotation = 0;
     let yOffset = 0;
     const scale = actor.isBoss ? GAME_CONFIG.actor.bossScale : 1;
-
-    const characterConfig = window.animConfig?.[actor.charClass] || window.animConfig?.Knight;
-    const rawOffsetX = (characterConfig?.idle?.offsetX || 0) * scale;
+    const spriteOffsetX = 0;
     // Enemies are flipped, so their visual offset goes the opposite direction
-    const spriteOffsetX = actor.isEnemy ? -rawOffsetX : rawOffsetX;
-
     drawSprite(actor, spriteAlpha, scale, rotation, yOffset);
     if (actor.health <= 0) return;
     const hpPercent = (actor.displayedHealth ?? actor.health) / actor.maxHealth;

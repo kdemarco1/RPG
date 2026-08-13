@@ -191,7 +191,9 @@ const classSpecialMoves = {
     const returnBuffer = 185; // extra frames to hold through the ease-back-to-idle
     spawnTripleSamuraiEffect(user, swingDuration + returnBuffer);
     await writeSlowly(`${user.name} splits into three — shadows and steel strike as one!`);
-    await user.attack(target, false, 3);
+    const rankBonus = (user.specialLevel - 1) * 0.15;
+    const multiplier = 3 + rankBonus;
+    await user.attack(target, false, multiplier);
 }
 }};
 

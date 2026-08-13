@@ -72,6 +72,7 @@ const volumeSlider = document.getElementById('volumeSlider');
 const backToMenuButton = document.getElementById('backToMenuButton');
 const loreScreen = document.getElementById('loreScreen');
 const introLine = document.getElementById('introLine');
+const chooseSpecialButton = document.getElementById('chooseSpecialButton');
 
 // Game Stats
 let selectedClass = '';
@@ -128,14 +129,17 @@ const classSpecialMoves = {
         icon: '💥',
         summaryLabel: 'Power Swipe',
         summaryDesc: 'A devastating overhead strike wreathed in blue-violet light, dealing 2-3x normal damage. Needs 3 turns to recharge after use.',
-        cooldownTurns: 3,
+        getCooldown(user) {
+            return Math.max(2, 3 - Math.floor((user.specialLevel - 1) / 2)); // 3-turn cooldown, reduced by 1 for every 2 ranks of special
+        },  
         async execute(user, target) {
             const attackConfig = window.animConfig?.[user.charClass]?.attacking;
             const swingDuration = attackConfig ? attackConfig.frames * attackConfig.speed : 60;
             const returnBuffer = 90; // extra frames to hold the glow through the ease-back-to-idle movement
             spawnPowerSwipeEffect(user, swingDuration + returnBuffer);
             await writeSlowly(`${user.name}'s blade glows with blue-violet light as they wind up a mighty swipe!`);
-            const multiplier = 2 + Math.random(); // 2x - 3x normal damage
+            const rankBonus = (user.specialLevel - 1) * 0.5;
+            const multiplier = (2 + rankBonus) + Math.random();
             await user.attack(target, false, multiplier);
         }
     },
@@ -153,7 +157,9 @@ const classSpecialMoves = {
     icon: '👥',
     summaryLabel: 'Shadow Strike',
     summaryDesc: 'Summon two shadow clones — all three Samurai strike at once dealing 3x damage. 5-turn cooldown.',
-    cooldownTurns: 5,
+    getCooldown(user) {
+        return Math.max(3, 5 - Math.floor((user.specialLevel - 1) / 2));
+    },
     async execute(user, target) {
     const attackConfig = window.animConfig?.[user.charClass]?.attacking;
     const swingDuration = attackConfig ? attackConfig.frames * attackConfig.speed : 60;
@@ -265,6 +271,7 @@ class Character {
         this.bonusAttack = 0;
         this.bonusDefense = 0;
         this.poison = null;
+        this.specialLevel = 1;
     }
 
     get attackLevel() {
@@ -290,15 +297,20 @@ class Character {
 
     async applyLevelUpChoice(choice) {
         if (choice === 'attack') {
-            this.bonusAttack += 3;
+            this.bonusAttack += 5;
             this.recalculateStats();
             await writeSlowly(`${this.name}'s attack power increased!`);
         } else if (choice === 'defense') {
-            this.bonusDefense += 3;
+            this.bonusDefense += 5;
             await writeSlowly(`${this.name}'s defense increased!`);
         } else if (choice === 'heal') {
             this.health = this.maxHealth;
             await writeSlowly(`${this.name} was fully healed!`);
+        } else if (choice === 'special') {
+            this.specialLevel++;
+            const move = classSpecialMoves[this.charClass];
+            const moveName = move ? move.summaryLabel : 'Special Ability';
+            await writeSlowly(`${this.name}'s ${moveName} upgraded to Rank ${this.specialLevel}!`);
         }
         updateBattleUI();
     }
@@ -376,7 +388,8 @@ class Character {
     async siphon(target) {
         // Siphon trades raw damage for sustain — it should drain for meaningfully less
         // than a normal attack, but the drained amount heals the caster.
-        const siphonAmount = getRandomInt(8, 14);
+        const bonusDrain = (this.specialLevel - 1) * 6;
+        const siphonAmount = getRandomInt(8 + bonusDrain, 14 + bonusDrain);
         const actualDrain = Math.min(siphonAmount, target.health);
 
         spawnSiphonEffect(target, this, 110);
@@ -577,7 +590,7 @@ function toggleButtons(disabled){
     defendButton.disabled = disabled;
     healButton.disabled = disabled;
     const move = classSpecialMoves[player.charClass];
-    const onCooldown = Boolean(move?.cooldownTurns) && player.specialCooldown > 0;
+    const onCooldown = player.specialCooldown > 0;
     specialButton.disabled = disabled || onCooldown;
 }
 
@@ -756,6 +769,9 @@ attackButton.addEventListener('click', async () => {
         await handleEnemyDefeat();
     } else {
         await enemyTurn();
+        if (player.health > 0) {
+            toggleButtons(false);
+        }
     }
 });
 
@@ -781,9 +797,7 @@ specialButton.addEventListener('click', async () => {
 
     tickCooldowns();
 
-    // Shouldn't normally be reachable since the button disables itself while on cooldown,
-    // but guards against any race between the click and the UI refresh.
-    if (move.cooldownTurns && player.specialCooldown > 0) {
+    if (player.specialCooldown > 0) {
         updateBattleUI();
         return;
     }
@@ -794,7 +808,9 @@ specialButton.addEventListener('click', async () => {
 
     await move.execute(player, currentEnemy);
 
-    if (move.cooldownTurns) {
+    if (typeof move.getCooldown === 'function') {
+        player.specialCooldown = move.getCooldown(player);
+    } else if (move.cooldownTurns) {
         player.specialCooldown = move.cooldownTurns;
     }
 
@@ -804,6 +820,9 @@ specialButton.addEventListener('click', async () => {
         await handleEnemyDefeat();
     } else {
         await enemyTurn();
+        if (player.health > 0) {
+            toggleButtons(false);
+        }
     }
 });
 
@@ -822,6 +841,9 @@ healButton.addEventListener('click', async () => {
         await writeSlowly(`${player.name} used a healing potion and restored ${healingAmount} health!`)
         updateBattleUI();
         await enemyTurn();
+        if (player.health > 0) {
+            toggleButtons(false);
+        }
     } else {
         await writeSlowly('No healing potions left!')
         toggleButtons(false)
@@ -920,21 +942,33 @@ function promptLevelUpChoice() {
     return new Promise((resolve) => {
         levelUpOverlay.style.display = 'flex';
 
-        function onAttack() { cleanup('attack'); }
-        function onDefense() { cleanup('defense'); }
-        function onHeal() { cleanup('heal'); }
-
-        function cleanup(choice) {
-            levelUpOverlay.style.display = 'none';
+        const move = classSpecialMoves[player.charClass];
+        if (chooseSpecialButton) {
+        if (move) {
+            chooseSpecialButton.textContent = `✨ Upgrade ${move.summaryLabel} (Rank ${player.specialLevel + 1})`;
+            chooseSpecialButton.style.display = 'inline-block';
+        } else {
+        chooseSpecialButton.style.display = 'none';
+        }
+    }
+        const cleanup = (choice) => {
             chooseAttackButton.removeEventListener('click', onAttack);
             chooseDefenseButton.removeEventListener('click', onDefense);
             chooseHealButton.removeEventListener('click', onHeal);
+            if (chooseSpecialButton) {chooseSpecialButton.removeEventListener('click', onSpecial);}
+            levelUpOverlay.style.display = 'none';
             resolve(choice);
-        }
+        };
+
+        const onAttack = () => cleanup('attack');
+        const onDefense = () => cleanup('defense');
+        const onHeal = () => cleanup('heal');
+        const onSpecial = () => cleanup('special');
 
         chooseAttackButton.addEventListener('click', onAttack);
         chooseDefenseButton.addEventListener('click', onDefense);
         chooseHealButton.addEventListener('click', onHeal);
+        if (chooseSpecialButton) chooseSpecialButton.addEventListener('click', onSpecial);
     });
 }
 
@@ -1001,7 +1035,7 @@ function updateHealButtonVisibility() {
 function refreshSpecialButtonLabel() {
     const move = classSpecialMoves[player.charClass];
     if (!move) return;
-    const onCooldown = Boolean(move.cooldownTurns) && player.specialCooldown > 0;
+    const onCooldown = player.specialCooldown > 0;
     specialButton.textContent = onCooldown ? `${move.label} (${player.specialCooldown})` : move.label;
 }
 

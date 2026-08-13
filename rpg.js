@@ -40,7 +40,6 @@ const battleScreen = document.getElementById('battleScreen');
 const nameInput = document.getElementById('nameInput');
 const logBox = document.getElementById('log');
 const confirmClassButton = document.getElementById('confirmClassButton');
-const beginAdventureButton = document.getElementById('beginAdventureButton');
 const attackButton = document.getElementById('attackButton');
 const defendButton = document.getElementById('defendButton');
 const healButton = document.getElementById('healButton');
@@ -72,6 +71,7 @@ const volumeSlider = document.getElementById('volumeSlider');
 const backToMenuButton = document.getElementById('backToMenuButton');
 const loreScreen = document.getElementById('loreScreen');
 const introLine = document.getElementById('introLine');
+const chooseSpecialButton = document.getElementById('chooseSpecialButton');
 
 // Game Stats
 let selectedClass = '';
@@ -114,56 +114,88 @@ const class_icons = {
     Samurai: '🥷🏻'
 };
 
-// Lore intro screen — class-specific story beats and ability blurbs
-const classAbilityInfo = {
-    attack: { icon: '⚔️', label: 'Attack', desc: 'Strike your foe for damage based on your weapon and level.' },
-    defend: { icon: '🛡️', label: 'Defend', desc: 'Brace for the blow — a good chance to block most of the damage, then strike back.' },
-    heal: { icon: '🧪', label: 'Heal', desc: 'Drink a potion to restore health mid-battle.' }
-};
-
-// Each class's Special Attack. Classes without an entry here simply don't get the button yet.
 const classSpecialMoves = {
     Knight: {
         label: '💥 Power Swipe',
         icon: '💥',
         summaryLabel: 'Power Swipe',
         summaryDesc: 'A devastating overhead strike wreathed in blue-violet light, dealing 2-3x normal damage. Needs 3 turns to recharge after use.',
-        cooldownTurns: 3,
+        getCooldown(user) {
+            return Math.max(2, 3 - Math.floor((user.specialLevel - 1) / 2)); // 3-turn cooldown, reduced by 1 for every 2 ranks of special
+        },  
+        previewStats(user) {
+        const base = user.attackRange[0];
+        const rankBonus = (user.specialLevel - 1) * 0.5;
+        const nextRankBonus = user.specialLevel * 0.5;
+        const dmg = Math.round(base * (2.5 + rankBonus));
+        const nextDmg = Math.round(base * (2.5 + nextRankBonus));
+        const cd = this.getCooldown(user);
+        const nextCd = this.getCooldown({ specialLevel: user.specialLevel + 1 });
+        const cooldownText = cd !== nextCd ? `Cooldown: ${cd} → ${nextCd} turns` : `Cooldown: ${nextCd} turns`;
+        return {
+            damageText: `${dmg} → ${nextDmg} damage`,
+            cooldownText
+        };
+        },
         async execute(user, target) {
-            const attackConfig = window.animConfig?.[user.charClass]?.attacking;
-            const swingDuration = attackConfig ? attackConfig.frames * attackConfig.speed : 60;
-            const returnBuffer = 90; // extra frames to hold the glow through the ease-back-to-idle movement
-            spawnPowerSwipeEffect(user, swingDuration + returnBuffer);
-            await writeSlowly(`${user.name}'s blade glows with blue-violet light as they wind up a mighty swipe!`);
-            const multiplier = 2 + Math.random(); // 2x - 3x normal damage
-            await user.attack(target, false, multiplier);
-        }
-    },
+        const attackConfig = window.animConfig?.[user.charClass]?.attacking;
+        const swingDuration = attackConfig ? attackConfig.frames * attackConfig.speed : 60;
+        const returnBuffer = 90; // extra frames to hold the glow through the ease-back-to-idle movement
+        spawnPowerSwipeEffect(user, swingDuration + returnBuffer);
+        await writeSlowly(`${user.name}'s blade glows with blue-violet light as they wind up a mighty swipe!`);
+        const rankBonus = (user.specialLevel - 1) * 0.5;
+        const multiplier = 2.5 + rankBonus;
+        await user.attack(target, false, multiplier);
+    }
+},
     Magician: {
-        label: '✨ Siphon',
-        icon: '✨',
-        summaryLabel: 'Siphon',
-        summaryDesc: 'Deals noticeably less damage than a regular Attack — but whatever it drains heals you for the same amount.',
-        async execute(user, target) {
-            await user.siphon(target);
-        }
+    label: '✨ Siphon',
+    icon: '✨',
+    summaryLabel: 'Siphon',
+    summaryDesc: 'Deals noticeably less damage than a regular Attack — but whatever it drains heals you for the same amount.',
+    previewStats(user) {
+        const bonusDrain = (user.specialLevel - 1) * 6;
+        const nextBonusDrain = user.specialLevel * 6;
+        const drain = 11 + bonusDrain;
+        const nextDrain = 11 + nextBonusDrain;
+        return {
+            damageText: `${drain}-${curMax} → ${nextDrain}-${nextMax} drain`,
+            cooldownText: null
+        };
     },
+    async execute(user, target) {
+        await user.siphon(target);
+    }
+},
     Samurai: {
     label: '👥 Shadow Strike',
     icon: '👥',
     summaryLabel: 'Shadow Strike',
     summaryDesc: 'Summon two shadow clones — all three Samurai strike at once dealing 3x damage. 5-turn cooldown.',
-    cooldownTurns: 5,
+    getCooldown(user) {
+        return Math.max(3, 5 - Math.floor((user.specialLevel - 1) / 2));
+    },
+    previewStats(user) {
+        const base = user.attackRange[0];
+        const dmg = base * 3;
+        const cd = this.getCooldown(user);
+        const nextCd = this.getCooldown({ specialLevel: user.specialLevel + 1 });
+        return {
+            damageText: `${dmg} damage (fixed)`,
+            cooldownText: cd !== nextCd ? `Cooldown: ${cd} → ${nextCd} turns` : `Cooldown: ${nextCd} turns`
+        };
+    },
     async execute(user, target) {
     const attackConfig = window.animConfig?.[user.charClass]?.attacking;
     const swingDuration = attackConfig ? attackConfig.frames * attackConfig.speed : 60;
     const returnBuffer = 185; // extra frames to hold through the ease-back-to-idle
     spawnTripleSamuraiEffect(user, swingDuration + returnBuffer);
     await writeSlowly(`${user.name} splits into three — shadows and steel strike as one!`);
-    await user.attack(target, false, 3);
-    }   
-    }
-};
+    const rankBonus = (user.specialLevel - 1) * 0.15;
+    const multiplier = 3 + rankBonus;
+    await user.attack(target, false, multiplier);
+}
+}};
 
 function getClassAbilities(charClass) {
     const abilities = ['attack'];
@@ -180,42 +212,9 @@ function showClassInfo(className) {
     document.getElementById('selectedTitle').textContent = className;
     document.getElementById('portrait').textContent = info.portrait;
     document.getElementById('classDescription').textContent = info.description;
-    document.getElementById('classStats').innerHTML = info.stats;
+    document.getElementById('classStats').innerHTML = renderClassStatsHTML(className);
     document.getElementById('heroSetup').style.display = 'block';
 }
-
-function updateCharacterCard() {
-    const classIcon = class_icons[player.charClass] || '';
-
-    document.getElementById("selectedTitle").textContent = player.name;
-    document.getElementById("classDescription").innerHTML = 
-        `<strong> ✔ Class Confirmed</strong><br><br>
-        <strong>${classIcon}</strong> ${player.charClass}<br><br>
-        <strong>❤️ </strong> ${player.health} HP<br><br>
-        <strong>⚔️ </strong> ${player.attackRange[0]}-${player.attackRange[1]}<br><br>
-        <strong>🧪 </strong> ${player.potions}<br><br>
-        <strong>🎚️ </strong> ${gameSettings.difficulty}`;
-    document.getElementById("classStats").innerHTML = renderAbilitySummaryHTML(player.charClass);
-    document.getElementById("heroSetup").style.display = "none";
-    beginAdventureButton.style.display = "inline-block";
-    document.querySelectorAll(".classButton").forEach(button=>{button.disabled = true; });
-    document.getElementById("portrait").style.display = "none";
-}
-
-function renderAbilitySummaryHTML(charClass) {
-    const abilities = getClassAbilities(charClass);
-    const rows = abilities.map(key => {
-        if (key === 'special') {
-            const move = classSpecialMoves[charClass];
-            return `<div class="abilityRow"><span class="abilityIcon">${move.icon}</span><div><strong>${move.summaryLabel}</strong><p>${move.summaryDesc}</p></div></div>`;
-        }
-        const info = classAbilityInfo[key];
-        return `<div class="abilityRow"><span class="abilityIcon">${info.icon}</span><div><strong>${info.label}</strong><p>${info.desc}</p></div></div>`;
-    }).join('');
-    return `<div class="abilitySummary">${rows}</div>`;
-}
-
-// Restore class-selection screen after play again
 
 function resetClassSelectionUI() {
     document.querySelectorAll('.classButton').forEach(button => {
@@ -231,7 +230,6 @@ function resetClassSelectionUI() {
     document.getElementById('heroSetup').style.display = 'none';
     difficultySelectStart.value = 'normal';
 
-    beginAdventureButton.style.display = 'none';
     nameInput.value = '';
     nameInput.classList.remove('inputError');
     nameInput.placeholder = 'Enter hero name';
@@ -241,7 +239,7 @@ function resetClassSelectionUI() {
 // Character Class
 
 class Character {
-    constructor(name, health, attackRange, charClass, potions = 0, baseX = 0, baseY = 0) {
+    constructor(name, health, attackRange, charClass, potions = 0, baseX = 0, baseY = 0, defendChance = defend_block_chance) {
         this.name = name;
         this.baseMaxHealth = health;
         this.health = health;
@@ -252,6 +250,7 @@ class Character {
         this.potions = potions;
         this.isDefending = false;
         this.lastDefendBlocked = false;
+        this.defendChance = defendChance;
         this.specialCooldown = 0;
         this.x = baseX;
         this.y = baseY;
@@ -265,6 +264,7 @@ class Character {
         this.bonusAttack = 0;
         this.bonusDefense = 0;
         this.poison = null;
+        this.specialLevel = 1;
     }
 
     get attackLevel() {
@@ -290,15 +290,20 @@ class Character {
 
     async applyLevelUpChoice(choice) {
         if (choice === 'attack') {
-            this.bonusAttack += 3;
+            this.bonusAttack += 5;
             this.recalculateStats();
             await writeSlowly(`${this.name}'s attack power increased!`);
         } else if (choice === 'defense') {
-            this.bonusDefense += 3;
+            this.bonusDefense += 5;
             await writeSlowly(`${this.name}'s defense increased!`);
         } else if (choice === 'heal') {
             this.health = this.maxHealth;
             await writeSlowly(`${this.name} was fully healed!`);
+        } else if (choice === 'special') {
+            this.specialLevel++;
+            const move = classSpecialMoves[this.charClass];
+            const moveName = move ? move.summaryLabel : 'Special Ability';
+            await writeSlowly(`${this.name}'s ${moveName} upgraded to Rank ${this.specialLevel}!`);
         }
         updateBattleUI();
     }
@@ -333,7 +338,7 @@ class Character {
     let blockedByDefense = false;
 
     if (target.isDefending) {
-        const blockSuccess = Math.random() < defend_block_chance;
+        const blockSuccess = Math.random() < target.defendChance;
         if (!isFollowUp) target.lastDefendBlocked = blockSuccess;
 
         if (blockSuccess) {
@@ -374,9 +379,8 @@ class Character {
 }
 
     async siphon(target) {
-        // Siphon trades raw damage for sustain — it should drain for meaningfully less
-        // than a normal attack, but the drained amount heals the caster.
-        const siphonAmount = getRandomInt(8, 14);
+        const bonusDrain = (this.specialLevel - 1) * 6;
+        const siphonAmount = 11 + bonusDrain;
         const actualDrain = Math.min(siphonAmount, target.health);
 
         spawnSiphonEffect(target, this, 110);
@@ -447,8 +451,6 @@ const bossTemplate = {
     potions: 1
 };
 
-// The first boss is capped regardless of difficulty so a fresh, low-level hero always has a
-// realistic shot at it. Every boss after that fully respects the chosen difficulty scaling.
 const first_boss_scale_cap = 0.85;
 
 function spawnBoss(bossNumber) {
@@ -481,9 +483,9 @@ function spawnNextEncounter() {
 }
 
 const playerConfigs = {
-    Knight:   { health: 65, attackRange: [16, 26], potions: 0 },
-    Magician: { health: 55, attackRange: [20, 30], potions: 3 },
-    Samurai:  { health: 70, attackRange: [14, 22], potions: 0 }
+    Knight:   { health: 65, attack: 22, defendChance: 0.85, potions: 0 },
+    Magician: { health: 55, attack: 27, defendChance: 0.50, potions: 3 },
+    Samurai:  { health: 70, attack: 18, defendChance: 0.70, potions: 0 }
 };
 
 function initPlayer(name, charClass) {
@@ -491,7 +493,7 @@ function initPlayer(name, charClass) {
     const mods = getPlayerDifficultyMods();
     const hp = Math.max(1, Math.round(config.health * mods.healthMult));
     const finalName = name.trim();
-    const playerCharacter = new Character(finalName, hp, config.attackRange, charClass, config.potions);
+    const playerCharacter = new Character(finalName, hp, [config.attack, config.attack], charClass, config.potions, 0, 0, config.defendChance);
     playerCharacter.isEnemy = false;
     return playerCharacter;
 }
@@ -535,7 +537,7 @@ confirmClassButton.addEventListener('click', () => {
     classConfirmed = true;
     gameSettings.difficulty = difficultySelectStart.value;
     player = initPlayer(trimmedName, selectedClass);
-    updateCharacterCard();
+    playIntroCinematic(player.charClass);
 });
 
 nameInput.addEventListener('input', () => {
@@ -577,13 +579,9 @@ function toggleButtons(disabled){
     defendButton.disabled = disabled;
     healButton.disabled = disabled;
     const move = classSpecialMoves[player.charClass];
-    const onCooldown = Boolean(move?.cooldownTurns) && player.specialCooldown > 0;
+    const onCooldown = player.specialCooldown > 0;
     specialButton.disabled = disabled || onCooldown;
 }
-
-beginAdventureButton.addEventListener('click', () => {
-    playIntroCinematic(player.charClass);
-});
 
 let introRunId = 0;
 
@@ -756,6 +754,9 @@ attackButton.addEventListener('click', async () => {
         await handleEnemyDefeat();
     } else {
         await enemyTurn();
+        if (player.health > 0) {
+            toggleButtons(false);
+        }
     }
 });
 
@@ -781,9 +782,7 @@ specialButton.addEventListener('click', async () => {
 
     tickCooldowns();
 
-    // Shouldn't normally be reachable since the button disables itself while on cooldown,
-    // but guards against any race between the click and the UI refresh.
-    if (move.cooldownTurns && player.specialCooldown > 0) {
+    if (player.specialCooldown > 0) {
         updateBattleUI();
         return;
     }
@@ -794,7 +793,9 @@ specialButton.addEventListener('click', async () => {
 
     await move.execute(player, currentEnemy);
 
-    if (move.cooldownTurns) {
+    if (typeof move.getCooldown === 'function') {
+        player.specialCooldown = move.getCooldown(player);
+    } else if (move.cooldownTurns) {
         player.specialCooldown = move.cooldownTurns;
     }
 
@@ -804,6 +805,9 @@ specialButton.addEventListener('click', async () => {
         await handleEnemyDefeat();
     } else {
         await enemyTurn();
+        if (player.health > 0) {
+            toggleButtons(false);
+        }
     }
 });
 
@@ -822,6 +826,9 @@ healButton.addEventListener('click', async () => {
         await writeSlowly(`${player.name} used a healing potion and restored ${healingAmount} health!`)
         updateBattleUI();
         await enemyTurn();
+        if (player.health > 0) {
+            toggleButtons(false);
+        }
     } else {
         await writeSlowly('No healing potions left!')
         toggleButtons(false)
@@ -916,25 +923,60 @@ async function animateXpBar(startXP, endXP) {
     }
 }
 
+function updateLevelUpButtonPreviews() {
+    const p = player;
+    const gain = 5;
+
+    chooseAttackButton.innerHTML =
+        `<span class="levelUpLabel">⚔️ Boost Attack</span>
+         <span class="levelUpStat">${formatAttackRange(p.attackRange)} <span class="levelUpArrow">→</span> ${formatAttackRange([p.attackRange[0] + gain, p.attackRange[1] + gain])}</span>`;
+
+    chooseDefenseButton.innerHTML =
+        `<span class="levelUpLabel">🛡️ Boost Defense</span>
+         <span class="levelUpStat">${p.bonusDefense} <span class="levelUpArrow">→</span> ${p.bonusDefense + gain} damage reduction</span>`;
+
+    chooseHealButton.innerHTML =
+        `<span class="levelUpLabel">❤️ Full Heal</span>`;
+
+    const move = classSpecialMoves[p.charClass];
+    if (chooseSpecialButton) {
+        if (move && typeof move.previewStats === 'function') {
+            const stats = move.previewStats(p);
+            const parts = [stats.damageText];
+            if (stats.cooldownText) parts.push(stats.cooldownText);
+            chooseSpecialButton.innerHTML =
+                `<span class="levelUpLabel">${move.icon} Upgrade ${move.summaryLabel}</span>
+                 <span class="levelUpStat">${parts.join(' · ')}</span>`;
+            chooseSpecialButton.style.display = 'inline-block';
+        } else {
+            chooseSpecialButton.style.display = 'none';
+        }
+    }
+}
+
 function promptLevelUpChoice() {
     return new Promise((resolve) => {
         levelUpOverlay.style.display = 'flex';
+        updateLevelUpButtonPreviews();
 
-        function onAttack() { cleanup('attack'); }
-        function onDefense() { cleanup('defense'); }
-        function onHeal() { cleanup('heal'); }
-
-        function cleanup(choice) {
-            levelUpOverlay.style.display = 'none';
+        const cleanup = (choice) => {
             chooseAttackButton.removeEventListener('click', onAttack);
             chooseDefenseButton.removeEventListener('click', onDefense);
             chooseHealButton.removeEventListener('click', onHeal);
+            if (chooseSpecialButton) chooseSpecialButton.removeEventListener('click', onSpecial);
+            levelUpOverlay.style.display = 'none';
             resolve(choice);
-        }
+        };
+
+        const onAttack = () => cleanup('attack');
+        const onDefense = () => cleanup('defense');
+        const onHeal = () => cleanup('heal');
+        const onSpecial = () => cleanup('special');
 
         chooseAttackButton.addEventListener('click', onAttack);
         chooseDefenseButton.addEventListener('click', onDefense);
         chooseHealButton.addEventListener('click', onHeal);
+        if (chooseSpecialButton) chooseSpecialButton.addEventListener('click', onSpecial);
     });
 }
 
@@ -994,6 +1036,12 @@ backToMenuButton.addEventListener('click', () => {
     mainMenu.style.display = '';
 });
 
+difficultySelectStart.addEventListener('change', () => {
+    if (selectedClass) {
+        document.getElementById('classStats').innerHTML = renderClassStatsHTML(selectedClass);
+    }
+});
+
 function updateHealButtonVisibility() {
     healButton.style.display = player.potions > 0 ? 'inline-block' : 'none';
 }
@@ -1001,7 +1049,7 @@ function updateHealButtonVisibility() {
 function refreshSpecialButtonLabel() {
     const move = classSpecialMoves[player.charClass];
     if (!move) return;
-    const onCooldown = Boolean(move.cooldownTurns) && player.specialCooldown > 0;
+    const onCooldown = player.specialCooldown > 0;
     specialButton.textContent = onCooldown ? `${move.label} (${player.specialCooldown})` : move.label;
 }
 
@@ -1020,4 +1068,39 @@ function showActionButtons(visible) {
     }
 
     healButton.style.display = visible && player.potions > 0 ? 'inline-block' : 'none';
+}
+
+function renderClassStatsHTML(className, difficulty = difficultySelectStart.value) {
+    const config = playerConfigs[className];
+    if (!config) return '';
+
+    const mods = playerDifficultyModifiers[difficulty] ?? playerDifficultyModifiers.normal;
+    const hp = Math.max(1, Math.round(config.health * mods.healthMult));
+    const canDefend = defend_allowed_classes.includes(className);
+    const move = classSpecialMoves[className];
+
+    const rows = [
+        { icon: '❤️', label: 'Health', desc: `${hp} HP` },
+        { icon: '⚔️', label: 'Attack', desc: `${config.attack} damage per hit` },
+        canDefend
+            ? { icon: '🛡️', label: 'Defend Chance', desc: `${Math.round(config.defendChance * 100)}% to block incoming attacks` }
+            : { icon: '🛡️', label: 'Defend', desc: `Cannot defend` }
+    ];
+
+    if (move) {
+        rows.push({ icon: move.icon, label: move.summaryLabel, desc: move.summaryDesc });
+    }
+    if (config.potions > 0) {
+        rows.push({ icon: '🧪', label: 'Starting Potions', desc: `${config.potions}` });
+    }
+
+    const rowsHTML = rows.map(r =>
+        `<div class="abilityRow"><span class="abilityIcon">${r.icon}</span><div><strong>${r.label}</strong><p>${r.desc}</p></div></div>`
+    ).join('');
+
+    return `<div class="abilitySummary">${rowsHTML}</div>`;
+}
+
+function formatAttackRange(range) {
+    return range[0] === range[1] ? `${range[0]}` : `${range[0]}-${range[1]}`;
 }

@@ -40,7 +40,6 @@ const battleScreen = document.getElementById('battleScreen');
 const nameInput = document.getElementById('nameInput');
 const logBox = document.getElementById('log');
 const confirmClassButton = document.getElementById('confirmClassButton');
-const beginAdventureButton = document.getElementById('beginAdventureButton');
 const attackButton = document.getElementById('attackButton');
 const defendButton = document.getElementById('defendButton');
 const healButton = document.getElementById('healButton');
@@ -124,26 +123,50 @@ const classSpecialMoves = {
         getCooldown(user) {
             return Math.max(2, 3 - Math.floor((user.specialLevel - 1) / 2)); // 3-turn cooldown, reduced by 1 for every 2 ranks of special
         },  
+        previewStats(user) {
+        const base = user.attackRange[0];
+        const rankBonus = (user.specialLevel - 1) * 0.5;
+        const nextRankBonus = user.specialLevel * 0.5;
+        const dmg = Math.round(base * (2.5 + rankBonus));
+        const nextDmg = Math.round(base * (2.5 + nextRankBonus));
+        const cd = this.getCooldown(user);
+        const nextCd = this.getCooldown({ specialLevel: user.specialLevel + 1 });
+        const cooldownText = cd !== nextCd ? `Cooldown: ${cd} → ${nextCd} turns` : `Cooldown: ${nextCd} turns`;
+        return {
+            damageText: `${dmg} → ${nextDmg} damage`,
+            cooldownText
+        };
+        },
         async execute(user, target) {
-            const attackConfig = window.animConfig?.[user.charClass]?.attacking;
-            const swingDuration = attackConfig ? attackConfig.frames * attackConfig.speed : 60;
-            const returnBuffer = 90; // extra frames to hold the glow through the ease-back-to-idle movement
-            spawnPowerSwipeEffect(user, swingDuration + returnBuffer);
-            await writeSlowly(`${user.name}'s blade glows with blue-violet light as they wind up a mighty swipe!`);
-            const rankBonus = (user.specialLevel - 1) * 0.5;
-            const multiplier = (2 + rankBonus) + Math.random();
-            await user.attack(target, false, multiplier);
-        }
-    },
+        const attackConfig = window.animConfig?.[user.charClass]?.attacking;
+        const swingDuration = attackConfig ? attackConfig.frames * attackConfig.speed : 60;
+        const returnBuffer = 90; // extra frames to hold the glow through the ease-back-to-idle movement
+        spawnPowerSwipeEffect(user, swingDuration + returnBuffer);
+        await writeSlowly(`${user.name}'s blade glows with blue-violet light as they wind up a mighty swipe!`);
+        const rankBonus = (user.specialLevel - 1) * 0.5;
+        const multiplier = 2.5 + rankBonus;
+        await user.attack(target, false, multiplier);
+    }
+},
     Magician: {
-        label: '✨ Siphon',
-        icon: '✨',
-        summaryLabel: 'Siphon',
-        summaryDesc: 'Deals noticeably less damage than a regular Attack — but whatever it drains heals you for the same amount.',
-        async execute(user, target) {
-            await user.siphon(target);
-        }
+    label: '✨ Siphon',
+    icon: '✨',
+    summaryLabel: 'Siphon',
+    summaryDesc: 'Deals noticeably less damage than a regular Attack — but whatever it drains heals you for the same amount.',
+    previewStats(user) {
+        const bonusDrain = (user.specialLevel - 1) * 6;
+        const nextBonusDrain = user.specialLevel * 6;
+        const drain = 11 + bonusDrain;
+        const nextDrain = 11 + nextBonusDrain;
+        return {
+            damageText: `${drain}-${curMax} → ${nextDrain}-${nextMax} drain`,
+            cooldownText: null
+        };
     },
+    async execute(user, target) {
+        await user.siphon(target);
+    }
+},
     Samurai: {
     label: '👥 Shadow Strike',
     icon: '👥',
@@ -152,6 +175,16 @@ const classSpecialMoves = {
     getCooldown(user) {
         return Math.max(3, 5 - Math.floor((user.specialLevel - 1) / 2));
     },
+    previewStats(user) {
+        const base = user.attackRange[0];
+        const dmg = base * 3;
+        const cd = this.getCooldown(user);
+        const nextCd = this.getCooldown({ specialLevel: user.specialLevel + 1 });
+        return {
+            damageText: `${dmg} damage (fixed)`,
+            cooldownText: cd !== nextCd ? `Cooldown: ${cd} → ${nextCd} turns` : `Cooldown: ${nextCd} turns`
+        };
+    },
     async execute(user, target) {
     const attackConfig = window.animConfig?.[user.charClass]?.attacking;
     const swingDuration = attackConfig ? attackConfig.frames * attackConfig.speed : 60;
@@ -159,9 +192,8 @@ const classSpecialMoves = {
     spawnTripleSamuraiEffect(user, swingDuration + returnBuffer);
     await writeSlowly(`${user.name} splits into three — shadows and steel strike as one!`);
     await user.attack(target, false, 3);
-    }   
-    }
-};
+}
+}};
 
 function getClassAbilities(charClass) {
     const abilities = ['attack'];
@@ -182,21 +214,6 @@ function showClassInfo(className) {
     document.getElementById('heroSetup').style.display = 'block';
 }
 
-function updateCharacterCard() {
-    const classIcon = class_icons[player.charClass] || '';
-
-    document.getElementById("selectedTitle").textContent = player.name;
-    document.getElementById("classDescription").innerHTML = 
-        `<strong> ✔ Class Confirmed</strong><br><br>
-        <strong>${classIcon}</strong> ${player.charClass}<br><br>
-        <strong>🎚️ </strong> ${gameSettings.difficulty}`;
-    document.getElementById("classStats").innerHTML = renderClassStatsHTML(player.charClass);
-    document.getElementById("heroSetup").style.display = "none";
-    beginAdventureButton.style.display = "inline-block";
-    document.querySelectorAll(".classButton").forEach(button=>{button.disabled = true; });
-    document.getElementById("portrait").style.display = "none";
-}
-
 function resetClassSelectionUI() {
     document.querySelectorAll('.classButton').forEach(button => {
         button.classList.remove('selected');
@@ -211,7 +228,6 @@ function resetClassSelectionUI() {
     document.getElementById('heroSetup').style.display = 'none';
     difficultySelectStart.value = 'normal';
 
-    beginAdventureButton.style.display = 'none';
     nameInput.value = '';
     nameInput.classList.remove('inputError');
     nameInput.placeholder = 'Enter hero name';
@@ -361,10 +377,8 @@ class Character {
 }
 
     async siphon(target) {
-        // Siphon trades raw damage for sustain — it should drain for meaningfully less
-        // than a normal attack, but the drained amount heals the caster.
         const bonusDrain = (this.specialLevel - 1) * 6;
-        const siphonAmount = getRandomInt(8 + bonusDrain, 14 + bonusDrain);
+        const siphonAmount = 11 + bonusDrain;
         const actualDrain = Math.min(siphonAmount, target.health);
 
         spawnSiphonEffect(target, this, 110);
@@ -435,8 +449,6 @@ const bossTemplate = {
     potions: 1
 };
 
-// The first boss is capped regardless of difficulty so a fresh, low-level hero always has a
-// realistic shot at it. Every boss after that fully respects the chosen difficulty scaling.
 const first_boss_scale_cap = 0.85;
 
 function spawnBoss(bossNumber) {
@@ -523,7 +535,7 @@ confirmClassButton.addEventListener('click', () => {
     classConfirmed = true;
     gameSettings.difficulty = difficultySelectStart.value;
     player = initPlayer(trimmedName, selectedClass);
-    updateCharacterCard();
+    playIntroCinematic(player.charClass);
 });
 
 nameInput.addEventListener('input', () => {
@@ -568,10 +580,6 @@ function toggleButtons(disabled){
     const onCooldown = player.specialCooldown > 0;
     specialButton.disabled = disabled || onCooldown;
 }
-
-beginAdventureButton.addEventListener('click', () => {
-    playIntroCinematic(player.charClass);
-});
 
 let introRunId = 0;
 
@@ -915,31 +923,28 @@ async function animateXpBar(startXP, endXP) {
 
 function updateLevelUpButtonPreviews() {
     const p = player;
-
     const gain = 5;
+
     chooseAttackButton.innerHTML =
-        `⚔️ Boost Attack<br><small>${formatAttackRange(p.attackRange)} → ${formatAttackRange([p.attackRange[0] + gain, p.attackRange[1] + gain])}</small>`;
+        `<span class="levelUpLabel">⚔️ Boost Attack</span>
+         <span class="levelUpStat">${formatAttackRange(p.attackRange)} <span class="levelUpArrow">→</span> ${formatAttackRange([p.attackRange[0] + gain, p.attackRange[1] + gain])}</span>`;
 
     chooseDefenseButton.innerHTML =
-        `🛡️ Boost Defense<br><small>Damage reduction: ${p.bonusDefense} → ${p.bonusDefense + gain}</small>`;
+        `<span class="levelUpLabel">🛡️ Boost Defense</span>
+         <span class="levelUpStat">${p.bonusDefense} <span class="levelUpArrow">→</span> ${p.bonusDefense + gain} damage reduction</span>`;
 
     chooseHealButton.innerHTML =
-        `❤️ Full Heal<br><small>Health: ${p.health}/${p.maxHealth} → ${p.maxHealth}/${p.maxHealth}</small>`;
+        `<span class="levelUpLabel">❤️ Full Heal</span>`;
 
     const move = classSpecialMoves[p.charClass];
     if (chooseSpecialButton) {
-        if (move) {
-            let detail = `Rank ${p.specialLevel} → ${p.specialLevel + 1}`;
-            if (typeof move.getCooldown === 'function') {
-                const currentCd = move.getCooldown(p);
-                const nextCd = move.getCooldown({ specialLevel: p.specialLevel + 1 });
-                if (nextCd !== currentCd) detail += ` · Cooldown: ${currentCd} → ${nextCd} turns`;
-            } else if (p.charClass === 'Magician') {
-                const curMin = 8 + (p.specialLevel - 1) * 6, curMax = 14 + (p.specialLevel - 1) * 6;
-                const nextMin = 8 + p.specialLevel * 6, nextMax = 14 + p.specialLevel * 6;
-                detail += ` · Siphon: ${curMin}-${curMax} → ${nextMin}-${nextMax}`;
-            }
-            chooseSpecialButton.innerHTML = `${move.icon} Upgrade ${move.summaryLabel}<br><small>${detail}</small>`;
+        if (move && typeof move.previewStats === 'function') {
+            const stats = move.previewStats(p);
+            const parts = [stats.damageText];
+            if (stats.cooldownText) parts.push(stats.cooldownText);
+            chooseSpecialButton.innerHTML =
+                `<span class="levelUpLabel">${move.icon} Upgrade ${move.summaryLabel}</span>
+                 <span class="levelUpStat">${parts.join(' · ')}</span>`;
             chooseSpecialButton.style.display = 'inline-block';
         } else {
             chooseSpecialButton.style.display = 'none';

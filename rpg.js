@@ -115,14 +115,6 @@ const class_icons = {
     Samurai: '🥷🏻'
 };
 
-// Lore intro screen — class-specific story beats and ability blurbs
-const classAbilityInfo = {
-    attack: { icon: '⚔️', label: 'Attack', desc: 'Strike your foe for damage based on your weapon and level.' },
-    defend: { icon: '🛡️', label: 'Defend', desc: 'Brace for the blow — a good chance to block most of the damage, then strike back.' },
-    heal: { icon: '🧪', label: 'Heal', desc: 'Drink a potion to restore health mid-battle.' }
-};
-
-// Each class's Special Attack. Classes without an entry here simply don't get the button yet.
 const classSpecialMoves = {
     Knight: {
         label: '💥 Power Swipe',
@@ -186,7 +178,7 @@ function showClassInfo(className) {
     document.getElementById('selectedTitle').textContent = className;
     document.getElementById('portrait').textContent = info.portrait;
     document.getElementById('classDescription').textContent = info.description;
-    document.getElementById('classStats').innerHTML = info.stats;
+    document.getElementById('classStats').innerHTML = renderClassStatsHTML(className);
     document.getElementById('heroSetup').style.display = 'block';
 }
 
@@ -197,31 +189,13 @@ function updateCharacterCard() {
     document.getElementById("classDescription").innerHTML = 
         `<strong> ✔ Class Confirmed</strong><br><br>
         <strong>${classIcon}</strong> ${player.charClass}<br><br>
-        <strong>❤️ </strong> ${player.health} HP<br><br>
-        <strong>⚔️ </strong> ${player.attackRange[0]}-${player.attackRange[1]}<br><br>
-        <strong>🧪 </strong> ${player.potions}<br><br>
         <strong>🎚️ </strong> ${gameSettings.difficulty}`;
-    document.getElementById("classStats").innerHTML = renderAbilitySummaryHTML(player.charClass);
+    document.getElementById("classStats").innerHTML = renderClassStatsHTML(player.charClass);
     document.getElementById("heroSetup").style.display = "none";
     beginAdventureButton.style.display = "inline-block";
     document.querySelectorAll(".classButton").forEach(button=>{button.disabled = true; });
     document.getElementById("portrait").style.display = "none";
 }
-
-function renderAbilitySummaryHTML(charClass) {
-    const abilities = getClassAbilities(charClass);
-    const rows = abilities.map(key => {
-        if (key === 'special') {
-            const move = classSpecialMoves[charClass];
-            return `<div class="abilityRow"><span class="abilityIcon">${move.icon}</span><div><strong>${move.summaryLabel}</strong><p>${move.summaryDesc}</p></div></div>`;
-        }
-        const info = classAbilityInfo[key];
-        return `<div class="abilityRow"><span class="abilityIcon">${info.icon}</span><div><strong>${info.label}</strong><p>${info.desc}</p></div></div>`;
-    }).join('');
-    return `<div class="abilitySummary">${rows}</div>`;
-}
-
-// Restore class-selection screen after play again
 
 function resetClassSelectionUI() {
     document.querySelectorAll('.classButton').forEach(button => {
@@ -247,7 +221,7 @@ function resetClassSelectionUI() {
 // Character Class
 
 class Character {
-    constructor(name, health, attackRange, charClass, potions = 0, baseX = 0, baseY = 0) {
+    constructor(name, health, attackRange, charClass, potions = 0, baseX = 0, baseY = 0, defendChance = defend_block_chance) {
         this.name = name;
         this.baseMaxHealth = health;
         this.health = health;
@@ -258,6 +232,7 @@ class Character {
         this.potions = potions;
         this.isDefending = false;
         this.lastDefendBlocked = false;
+        this.defendChance = defendChance;
         this.specialCooldown = 0;
         this.x = baseX;
         this.y = baseY;
@@ -345,7 +320,7 @@ class Character {
     let blockedByDefense = false;
 
     if (target.isDefending) {
-        const blockSuccess = Math.random() < defend_block_chance;
+        const blockSuccess = Math.random() < target.defendChance;
         if (!isFollowUp) target.lastDefendBlocked = blockSuccess;
 
         if (blockSuccess) {
@@ -494,9 +469,9 @@ function spawnNextEncounter() {
 }
 
 const playerConfigs = {
-    Knight:   { health: 65, attackRange: [16, 26], potions: 0 },
-    Magician: { health: 55, attackRange: [20, 30], potions: 3 },
-    Samurai:  { health: 70, attackRange: [14, 22], potions: 0 }
+    Knight:   { health: 65, attack: 22, defendChance: 0.85, potions: 0 },
+    Magician: { health: 55, attack: 27, defendChance: 0.50, potions: 3 },
+    Samurai:  { health: 70, attack: 18, defendChance: 0.70, potions: 0 }
 };
 
 function initPlayer(name, charClass) {
@@ -504,7 +479,7 @@ function initPlayer(name, charClass) {
     const mods = getPlayerDifficultyMods();
     const hp = Math.max(1, Math.round(config.health * mods.healthMult));
     const finalName = name.trim();
-    const playerCharacter = new Character(finalName, hp, config.attackRange, charClass, config.potions);
+    const playerCharacter = new Character(finalName, hp, [config.attack, config.attack], charClass, config.potions, 0, 0, config.defendChance);
     playerCharacter.isEnemy = false;
     return playerCharacter;
 }
@@ -938,24 +913,50 @@ async function animateXpBar(startXP, endXP) {
     }
 }
 
+function updateLevelUpButtonPreviews() {
+    const p = player;
+
+    const gain = 5;
+    chooseAttackButton.innerHTML =
+        `⚔️ Boost Attack<br><small>${formatAttackRange(p.attackRange)} → ${formatAttackRange([p.attackRange[0] + gain, p.attackRange[1] + gain])}</small>`;
+
+    chooseDefenseButton.innerHTML =
+        `🛡️ Boost Defense<br><small>Damage reduction: ${p.bonusDefense} → ${p.bonusDefense + gain}</small>`;
+
+    chooseHealButton.innerHTML =
+        `❤️ Full Heal<br><small>Health: ${p.health}/${p.maxHealth} → ${p.maxHealth}/${p.maxHealth}</small>`;
+
+    const move = classSpecialMoves[p.charClass];
+    if (chooseSpecialButton) {
+        if (move) {
+            let detail = `Rank ${p.specialLevel} → ${p.specialLevel + 1}`;
+            if (typeof move.getCooldown === 'function') {
+                const currentCd = move.getCooldown(p);
+                const nextCd = move.getCooldown({ specialLevel: p.specialLevel + 1 });
+                if (nextCd !== currentCd) detail += ` · Cooldown: ${currentCd} → ${nextCd} turns`;
+            } else if (p.charClass === 'Magician') {
+                const curMin = 8 + (p.specialLevel - 1) * 6, curMax = 14 + (p.specialLevel - 1) * 6;
+                const nextMin = 8 + p.specialLevel * 6, nextMax = 14 + p.specialLevel * 6;
+                detail += ` · Siphon: ${curMin}-${curMax} → ${nextMin}-${nextMax}`;
+            }
+            chooseSpecialButton.innerHTML = `${move.icon} Upgrade ${move.summaryLabel}<br><small>${detail}</small>`;
+            chooseSpecialButton.style.display = 'inline-block';
+        } else {
+            chooseSpecialButton.style.display = 'none';
+        }
+    }
+}
+
 function promptLevelUpChoice() {
     return new Promise((resolve) => {
         levelUpOverlay.style.display = 'flex';
+        updateLevelUpButtonPreviews();
 
-        const move = classSpecialMoves[player.charClass];
-        if (chooseSpecialButton) {
-        if (move) {
-            chooseSpecialButton.textContent = `✨ Upgrade ${move.summaryLabel} (Rank ${player.specialLevel + 1})`;
-            chooseSpecialButton.style.display = 'inline-block';
-        } else {
-        chooseSpecialButton.style.display = 'none';
-        }
-    }
         const cleanup = (choice) => {
             chooseAttackButton.removeEventListener('click', onAttack);
             chooseDefenseButton.removeEventListener('click', onDefense);
             chooseHealButton.removeEventListener('click', onHeal);
-            if (chooseSpecialButton) {chooseSpecialButton.removeEventListener('click', onSpecial);}
+            if (chooseSpecialButton) chooseSpecialButton.removeEventListener('click', onSpecial);
             levelUpOverlay.style.display = 'none';
             resolve(choice);
         };
@@ -1028,6 +1029,12 @@ backToMenuButton.addEventListener('click', () => {
     mainMenu.style.display = '';
 });
 
+difficultySelectStart.addEventListener('change', () => {
+    if (selectedClass) {
+        document.getElementById('classStats').innerHTML = renderClassStatsHTML(selectedClass);
+    }
+});
+
 function updateHealButtonVisibility() {
     healButton.style.display = player.potions > 0 ? 'inline-block' : 'none';
 }
@@ -1054,4 +1061,39 @@ function showActionButtons(visible) {
     }
 
     healButton.style.display = visible && player.potions > 0 ? 'inline-block' : 'none';
+}
+
+function renderClassStatsHTML(className, difficulty = difficultySelectStart.value) {
+    const config = playerConfigs[className];
+    if (!config) return '';
+
+    const mods = playerDifficultyModifiers[difficulty] ?? playerDifficultyModifiers.normal;
+    const hp = Math.max(1, Math.round(config.health * mods.healthMult));
+    const canDefend = defend_allowed_classes.includes(className);
+    const move = classSpecialMoves[className];
+
+    const rows = [
+        { icon: '❤️', label: 'Health', desc: `${hp} HP` },
+        { icon: '⚔️', label: 'Attack', desc: `${config.attack} damage per hit` },
+        canDefend
+            ? { icon: '🛡️', label: 'Defend Chance', desc: `${Math.round(config.defendChance * 100)}% to block incoming attacks` }
+            : { icon: '🛡️', label: 'Defend', desc: `Cannot defend` }
+    ];
+
+    if (move) {
+        rows.push({ icon: move.icon, label: move.summaryLabel, desc: move.summaryDesc });
+    }
+    if (config.potions > 0) {
+        rows.push({ icon: '🧪', label: 'Starting Potions', desc: `${config.potions}` });
+    }
+
+    const rowsHTML = rows.map(r =>
+        `<div class="abilityRow"><span class="abilityIcon">${r.icon}</span><div><strong>${r.label}</strong><p>${r.desc}</p></div></div>`
+    ).join('');
+
+    return `<div class="abilitySummary">${rowsHTML}</div>`;
+}
+
+function formatAttackRange(range) {
+    return range[0] === range[1] ? `${range[0]}` : `${range[0]}-${range[1]}`;
 }
